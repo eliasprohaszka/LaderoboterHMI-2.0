@@ -1,0 +1,71 @@
+@inject ITranslationService T
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnCancel">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <h3 class="dialog-title">@T.Translate("translations.importTitle")</h3>
+                <button class="close-button" @onclick="OnCancel">×</button>
+            </div>
+
+            <div class="dialog-body">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">JSON</label>
+                        <textarea
+                            class="json-input"
+                            placeholder='{"de": {"key": "value"}, "en": {"key": "value"}}'
+                            @bind="JsonContent"></textarea>
+                    </div>
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox"
+                               class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                               @bind="OverwriteExisting" />
+                        <span class="text-sm">@T.Translate("translations.overwriteExisting")</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" @onclick="OnCancel">
+                    @T.Translate("common.cancel")
+                </button>
+                <button class="btn btn-primary" @onclick="OnConfirm">
+                    @T.Translate("translations.import")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+    [Parameter] public EventCallback<(string Json, bool Overwrite)> OnConfirmed { get; set; }
+
+    private string JsonContent { get; set; } = "";
+    private bool OverwriteExisting { get; set; } = false;
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            JsonContent = "";
+            OverwriteExisting = false;
+        }
+    }
+
+    private async Task OnConfirm()
+    {
+        if (!string.IsNullOrWhiteSpace(JsonContent))
+        {
+            await OnConfirmed.InvokeAsync((JsonContent, OverwriteExisting));
+        }
+    }
+
+    private async Task OnCancel()
+    {
+        await OnCancelled.InvokeAsync();
+    }
+}

@@ -1,0 +1,22 @@
+.maintenance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 1.5rem;
+    height: 100%;
+    max-height: 100%;
+}
+
+@media (max-width: 1024px) {
+    .maintenance-grid {
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .maintenance-grid {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto;
+    }
+}

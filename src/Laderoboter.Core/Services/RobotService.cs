@@ -1,0 +1,833 @@
+using UnderAutomation.Fanuc;
+using Laderoboter.Core.Events;
+using Laderoboter.Core.Models;
+
+namespace Laderoboter.Core.Services;
+
+/// <summary>
+/// Service für die direkte Kommunikation mit dem FANUC Roboter.
+/// Für reaktives Monitoring verwenden Sie IRobotMonitor.
+/// </summary>
+public class RobotService : IRobotService
+{
+    private readonly IErrorLogService _errorLog;
+    private FanucRobot? _robot;
+    private bool _disposed;
+    private bool _isConnected;
+
+    // Door Handshake Monitor
+    private System.Threading.Timer? _handshakeTimer;
+    private readonly object _handshakeLock = new();
+    // Key = statusRegister, Value = (requestRegister, expectedValue)
+    private readonly Dictionary<int, (int requestRegister, int expectedValue)> _activeHandshakes = new();
+    private const int HANDSHAKE_POLL_INTERVAL_MS = 200;
+
+    // Batch Assignments für schnelles Lesen (dynamic type um API-Kompatibilität zu gewährleisten)
+    private dynamic? _paletteRuntimeBatch;  // R[50-65]: Runtime palette values
+    private dynamic? _paletteIdleBatch;     // R[150-165]: Idle palette values
+    private dynamic? _sequenceBatch;        // R[101-116]: Sequence numbers
+
+    // Register addresses (from old app)
+    private const int PALETTE_RUNTIME_START = 50;   // 50-65: Palette 1 & 2 wenn Programm läuft
+    private const int PALETTE_IDLE_START = 150;     // 150-165: Palette 1 & 2 wenn Programm NICHT läuft
+    private const int SEQUENCE_START = 101;
+    private const int MODE_REGISTER_1 = 48;
+    private const int MODE_REGISTER_2 = 148;
+    private const int DOOR_REGISTER = 87;
+    private const int LOAD_REGISTER = 88;
+    private const int AUTOSTOP_REGISTER_1 = 86;
+    private const int AUTOSTOP_REGISTER_2 = 186;
+    private const int LAYDOWN_REGISTER_1 = 75;
+    private const int LAYDOWN_REGISTER_2 = 175;
+    private const int PALETTE_DOOR1_REGISTER_1 = 87;
+    private const int PALETTE_DOOR1_REGISTER_2 = 187;
+
+    public RobotService(ISettingsService settings, IErrorLogService errorLog)
+    {
+        _errorLog = errorLog;
+        Status = new RobotStatus();
+        Palette1 = new PaletteData { PaletteNumber = 1 };
+        Palette2 = new PaletteData { PaletteNumber = 2 };
+
+        InitializePalettes();
+    }
+
+    private void InitializePalettes()
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            Palette1.Workpieces.Add(new WorkpieceStatus
+            {
+                Position = i + 1,
+                RegisterAddress = PALETTE_RUNTIME_START + i,
+                State = WorkpieceState.Unused
+            });
+
+            Palette2.Workpieces.Add(new WorkpieceStatus
+            {
+                Position = i + 1,
+                RegisterAddress = PALETTE_RUNTIME_START + 8 + i,
+                State = WorkpieceState.Unused
+            });
+        }
+    }
+
+    private void InitializeBatchAssignments()
+    {
+        if (_robot?.Snpx == null) return;
+
+        try
+        {
+            // Batch für Runtime Palette Werte: R[50-65] (16 Register)
+            _paletteRuntimeBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(PALETTE_RUNTIME_START, 16);
+
+            // Batch für Idle Palette Werte: R[150-165] (16 Register)
+            _paletteIdleBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(PALETTE_IDLE_START, 16);
+
+            // Batch für Sequence: R[101-116] (16 Register)
+            _sequenceBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(SEQUENCE_START, 16);
+        }
+        catch (Exception ex)
+        {
+            _errorLog.LogAsync($"Failed to initialize batch assignments: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+        }
+    }
+
+    private void DisposeBatchAssignments()
+    {
+        _paletteRuntimeBatch = null;
+        _paletteIdleBatch = null;
+        _sequenceBatch = null;
+    }
+
+    public bool IsConnected => _isConnected && _robot != null;
+    public RobotStatus Status { get; private set; }
+    public PaletteData Palette1 { get; private set; }
+    public PaletteData Palette2 { get; private set; }
+
+    public event EventHandler<RobotStatusChangedEventArgs>? StatusChanged;
+    public event EventHandler<RegisterChangedEventArgs>? RegisterChanged;
+    public event EventHandler<PaletteChangedEventArgs>? PaletteChanged;
+    public event EventHandler<ErrorOccurredEventArgs>? ErrorOccurred;
+
+    public async Task<bool> ConnectAsync(string connectionPath, int timeout = 2000)
+    {
+        try
+        {
+            _robot = new FanucRobot();
+
+            // Configure connection parameters for v4.4.0 API
+            // ConnectionParameters accepts both IP addresses and RoboGuide paths
+            // For RoboGuide: Use the path to the Robot_1 folder (not localhost/127.0.0.1)
+            // The SDK reads services.txt from that folder to determine correct ports
+            var parameters = new ConnectionParameters();
+            parameters.Address = connectionPath;
+
+            parameters.Snpx.Enable = true;
+
+            parameters.Telnet.Enable = true;
+            parameters.Telnet.TelnetKclPassword = "ADMIN"; // Default KCL password for RoboGuide
+
+            parameters.Ftp.Enable = true;
+            parameters.Ftp.FtpUser = "";
+            parameters.Ftp.FtpPassword = "";
+
+            // Connect returns void in v4.4.0, use try/catch for error handling
+            await Task.Run(() => _robot.Connect(parameters));
+
+            // Check connection status - check all protocols
+            bool snpxConnected = _robot.Snpx?.Connected ?? false;
+            bool telnetConnected = _robot.Telnet?.Connected ?? false;
+            bool ftpConnected = _robot.Ftp?.Connected ?? false;
+
+            _isConnected = _robot.Enabled; // Use general Enabled property
+
+            if (_isConnected)
+            {
+                // Initialize batch assignments for fast register reading
+                InitializeBatchAssignments();
+
+                Status.IsConnected = true;
+                Status.IpAddress = connectionPath;
+                Status.LastUpdated = DateTime.UtcNow;
+                OnStatusChanged();
+                return true;
+            }
+            else
+            {
+                // Build detailed error message showing which protocols failed
+                var failedProtocols = new System.Collections.Generic.List<string>();
+                if (!(_robot.Snpx?.Connected ?? false)) failedProtocols.Add("SNPX");
+                if (!(_robot.Telnet?.Connected ?? false)) failedProtocols.Add("Telnet");
+                if (!(_robot.Ftp?.Connected ?? false)) failedProtocols.Add("FTP");
+
+                Status.ErrorMessage = $"Connection failed. Protocols not connected: {string.Join(", ", failedProtocols)}. " +
+                    $"For RoboGuide, ensure it's running and use the Robot folder path (e.g., C:\\Workcells\\Robot_1).";
+                await _errorLog.LogAsync($"Connection failed: {Status.ErrorMessage}",
+                    ErrorSeverity.Error, ErrorSource.Robot);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _isConnected = false;
+            Status.ErrorMessage = ex.Message;
+            await _errorLog.LogAsync($"Connection error: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public Task DisconnectAsync()
+    {
+        DisposeBatchAssignments();
+
+        if (_robot != null)
+        {
+            _robot.Disconnect();
+            _robot = null;
+        }
+
+        _isConnected = false;
+        Status.IsConnected = false;
+        Status.LastUpdated = DateTime.UtcNow;
+        OnStatusChanged();
+
+        return Task.CompletedTask;
+    }
+
+    public async Task<IEnumerable<string>> GetProgramsAsync()
+    {
+        if (_robot == null || !IsConnected)
+            return Enumerable.Empty<string>();
+
+        try
+        {
+            // Use FTP GetProgramStates to get all loaded programs
+            var states = _robot.Ftp.GetProgramStates();
+            return states.TaskStates
+                .Select(t => t.Name)
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to get programs: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return Enumerable.Empty<string>();
+        }
+    }
+
+    public async Task<bool> RunProgramAsync(string programName)
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            var result = _robot.Telnet.Run(programName);
+            Status.IsRunning = result.Succeed;
+            Status.CurrentProgram = result.Succeed ? programName : null;
+            OnStatusChanged();
+            return result.Succeed;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to run program: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> StopProgramAsync()
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            var result = _robot.Telnet.Abort();
+            if (result.Succeed)
+            {
+                Status.IsRunning = false;
+                Status.CurrentProgram = null;
+                OnStatusChanged();
+            }
+            return result.Succeed;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to stop program: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> PauseProgramAsync()
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            var result = _robot.Telnet.Pause();
+            return result.Succeed;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to pause program: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> ResumeProgramAsync()
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            var result = _robot.Telnet.Continue();
+            return result.Succeed;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to resume program: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> ResetAsync()
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            var result = _robot.Telnet.Reset();
+            if (result.Succeed)
+            {
+                Status.IsRunning = false;
+                Status.CurrentProgram = null;
+                OnStatusChanged();
+            }
+            return result.Succeed;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to reset: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> SetSpeedOverrideAsync(int speed)
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            // Use System Variable $MCR.$GENOVERRIDE for speed override
+            _robot.Snpx.IntegerSystemVariables.Write("$MCR.$GENOVERRIDE", speed);
+            Status.SpeedOverride = speed;
+            OnStatusChanged();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to set speed: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public Task<int?> GetSpeedOverrideAsync()
+    {
+        if (_robot == null || !IsConnected) return Task.FromResult<int?>(null);
+
+        try
+        {
+            int value = _robot.Snpx.IntegerSystemVariables.Read("$MCR.$GENOVERRIDE");
+            return Task.FromResult<int?>(value);
+        }
+        catch
+        {
+            return Task.FromResult<int?>(null);
+        }
+    }
+
+    public Task<int?> ReadRegisterAsync(int address)
+    {
+        if (_robot == null || !IsConnected) return Task.FromResult<int?>(null);
+
+        try
+        {
+            // Erstelle einen neuen BatchAssignment für einen einzelnen Read
+            // Dies umgeht mögliches Caching im SDK
+            var batch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(address, 1);
+            float[] values = batch.Read();
+
+            if (values != null && values.Length > 0)
+            {
+                return Task.FromResult<int?>((int)values[0]);
+            }
+
+            // Fallback zum direkten Read
+            float value = _robot.Snpx.NumericRegisters.Read(address);
+            return Task.FromResult<int?>((int)value);
+        }
+        catch
+        {
+            return Task.FromResult<int?>(null);
+        }
+    }
+
+    public Task<int[]?> ReadRegistersAsync(int startAddress, int count)
+    {
+        if (_robot == null || !IsConnected) return Task.FromResult<int[]?>(null);
+
+        try
+        {
+            // Versuche vordefinierte Batch-Assignments zu verwenden
+            float[]? floatValues = null;
+
+            if (startAddress == PALETTE_RUNTIME_START && count == 16 && _paletteRuntimeBatch != null)
+            {
+                floatValues = _paletteRuntimeBatch.Read();
+            }
+            else if (startAddress == PALETTE_IDLE_START && count == 16 && _paletteIdleBatch != null)
+            {
+                floatValues = _paletteIdleBatch.Read();
+            }
+            else if (startAddress == SEQUENCE_START && count == 16 && _sequenceBatch != null)
+            {
+                floatValues = _sequenceBatch.Read();
+            }
+            else
+            {
+                // Fallback: Erstelle temporäres Batch-Assignment für andere Bereiche
+                var tempBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(startAddress, count);
+                floatValues = tempBatch.Read();
+            }
+
+            if (floatValues == null) return Task.FromResult<int[]?>(null);
+
+            var values = new int[floatValues.Length];
+            for (int i = 0; i < floatValues.Length; i++)
+            {
+                values[i] = (int)floatValues[i];
+            }
+            return Task.FromResult<int[]?>(values);
+        }
+        catch
+        {
+            return Task.FromResult<int[]?>(null);
+        }
+    }
+
+    public async Task<bool> WriteRegisterAsync(int address, int value)
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            _robot.Snpx.NumericRegisters.Write(address, (float)value);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to write register R[{address}]: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public Task<bool?> ReadDigitalInputAsync(int address)
+    {
+        if (_robot == null || !IsConnected) return Task.FromResult<bool?>(null);
+
+        try
+        {
+            bool value = _robot.Snpx.SDI.Read(address);
+            return Task.FromResult<bool?>(value);
+        }
+        catch
+        {
+            return Task.FromResult<bool?>(null);
+        }
+    }
+
+    public Task<bool[]?> ReadDigitalInputsAsync(int startAddress, int count)
+    {
+        if (_robot == null || !IsConnected) return Task.FromResult<bool[]?>(null);
+
+        try
+        {
+            var values = new bool[count];
+            for (int i = 0; i < count; i++)
+            {
+                values[i] = _robot.Snpx.SDI.Read(startAddress + i);
+            }
+            return Task.FromResult<bool[]?>(values);
+        }
+        catch
+        {
+            return Task.FromResult<bool[]?>(null);
+        }
+    }
+
+    public Task<bool?> ReadDigitalOutputAsync(int address)
+    {
+        if (_robot == null || !IsConnected) return Task.FromResult<bool?>(null);
+
+        try
+        {
+            bool value = _robot.Snpx.SDO.Read(address);
+            return Task.FromResult<bool?>(value);
+        }
+        catch
+        {
+            return Task.FromResult<bool?>(null);
+        }
+    }
+
+    public Task<bool[]?> ReadDigitalOutputsAsync(int startAddress, int count)
+    {
+        if (_robot == null || !IsConnected) return Task.FromResult<bool[]?>(null);
+
+        try
+        {
+            var values = new bool[count];
+            for (int i = 0; i < count; i++)
+            {
+                values[i] = _robot.Snpx.SDO.Read(startAddress + i);
+            }
+            return Task.FromResult<bool[]?>(values);
+        }
+        catch
+        {
+            return Task.FromResult<bool[]?>(null);
+        }
+    }
+
+    public async Task<bool> WriteDigitalOutputAsync(int address, bool value)
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            _robot.Snpx.SDO.Write(address, value);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to write DO[{address}]: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> SimulateDigitalInputAsync(int address, bool value)
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            // SDI.Write simulates an input value
+            _robot.Snpx.SDI.Write(address, value);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to simulate DI[{address}]: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> SimulateDigitalOutputAsync(int address, bool value)
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            _robot.Snpx.SDO.Write(address, value);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to simulate DO[{address}]: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public Task<Dictionary<int, bool>?> ReadDigitalInputsBatchAsync(int[] addresses)
+    {
+        if (_robot == null || !IsConnected || addresses.Length == 0)
+            return Task.FromResult<Dictionary<int, bool>?>(null);
+
+        try
+        {
+            // Bestimme den Bereich der zu lesenden Adressen
+            int minAddress = addresses.Min();
+            int maxAddress = addresses.Max();
+            ushort count = (ushort)(maxAddress - minAddress + 1);
+
+            // Lese alle Werte im Bereich mit einem Batch-Read
+            bool[] allValues = _robot.Snpx.SDI.Read(minAddress, count);
+
+            var result = new Dictionary<int, bool>();
+            foreach (var address in addresses)
+            {
+                int index = address - minAddress;
+                if (index >= 0 && index < allValues.Length)
+                {
+                    result[address] = allValues[index];
+                }
+            }
+            return Task.FromResult<Dictionary<int, bool>?>(result);
+        }
+        catch
+        {
+            return Task.FromResult<Dictionary<int, bool>?>(null);
+        }
+    }
+
+    public Task<Dictionary<int, bool>?> ReadDigitalOutputsBatchAsync(int[] addresses)
+    {
+        if (_robot == null || !IsConnected || addresses.Length == 0)
+            return Task.FromResult<Dictionary<int, bool>?>(null);
+
+        try
+        {
+            // Bestimme den Bereich der zu lesenden Adressen
+            int minAddress = addresses.Min();
+            int maxAddress = addresses.Max();
+            ushort count = (ushort)(maxAddress - minAddress + 1);
+
+            // Lese alle Werte im Bereich mit einem Batch-Read
+            bool[] allValues = _robot.Snpx.SDO.Read(minAddress, count);
+
+            var result = new Dictionary<int, bool>();
+            foreach (var address in addresses)
+            {
+                int index = address - minAddress;
+                if (index >= 0 && index < allValues.Length)
+                {
+                    result[address] = allValues[index];
+                }
+            }
+            return Task.FromResult<Dictionary<int, bool>?>(result);
+        }
+        catch
+        {
+            return Task.FromResult<Dictionary<int, bool>?>(null);
+        }
+    }
+
+    public async Task<bool> MoveToHomeAsync()
+    {
+        return await RunProgramAsync("HOME");
+    }
+
+    public async Task<bool> LayDownAsync()
+    {
+        return await WriteRegisterAsync(LAYDOWN_REGISTER_1, 1) &&
+               await WriteRegisterAsync(LAYDOWN_REGISTER_2, 1);
+    }
+
+    public async Task<bool> PickUpAsync()
+    {
+        return await WriteRegisterAsync(LAYDOWN_REGISTER_1, 2) &&
+               await WriteRegisterAsync(LAYDOWN_REGISTER_2, 2);
+    }
+
+    public async Task<bool> OpenMaintenanceDoorAsync()
+    {
+        return await WriteRegisterAsync(DOOR_REGISTER, 1);
+    }
+
+    public async Task<bool> CloseMaintenanceDoorAsync()
+    {
+        return await WriteRegisterAsync(DOOR_REGISTER, 0);
+    }
+
+    public async Task<bool> OpenLoadDoorAsync()
+    {
+        return await WriteRegisterAsync(LOAD_REGISTER, 1);
+    }
+
+    public async Task<bool> CloseLoadDoorAsync()
+    {
+        return await WriteRegisterAsync(LOAD_REGISTER, 0);
+    }
+
+    public async Task<bool> OpenPaletteDoor1Async()
+    {
+        return await WriteRegisterAsync(PALETTE_DOOR1_REGISTER_1, 1);
+    }
+
+    public async Task<bool> ClosePaletteDoor1Async()
+    {
+        return await WriteRegisterAsync(PALETTE_DOOR1_REGISTER_1, 0);
+    }
+
+    public async Task<bool> OpenPaletteDoor2Async()
+    {
+        return await WriteRegisterAsync(PALETTE_DOOR1_REGISTER_2, 1);
+    }
+
+    public async Task<bool> ClosePaletteDoor2Async()
+    {
+        return await WriteRegisterAsync(PALETTE_DOOR1_REGISTER_2, 0);
+    }
+
+    private void OnStatusChanged()
+    {
+        StatusChanged?.Invoke(this, new RobotStatusChangedEventArgs { Status = Status });
+    }
+
+    public async Task<bool> StartDoorHandshakeAsync(int requestRegister)
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        // Mapping: Request-Register → Status-Register und erwarteter Wert
+        // Wartungstür: R189 → R89, erwartet 2
+        // Palettentür 1: R187 → R87, erwartet 1
+        // Palettentür 2: R188 → R88, erwartet 1
+        int statusRegister = requestRegister switch
+        {
+            187 => 87,  // Palettentür 1
+            188 => 88,  // Palettentür 2
+            189 => 89,  // Wartungstür
+            _ => throw new ArgumentException($"Ungültiges Request-Register: {requestRegister}. Erlaubt: 187, 188, 189")
+        };
+
+        // Erwarteter Wert wenn Tür freigegeben: 1 für Palette, 2 für Wartung
+        int expectedValue = requestRegister == 189 ? 2 : 1;
+
+        try
+        {
+            // Zuerst prüfen ob Tür bereits freigegeben
+            var currentValue = await ReadRegisterAsync(statusRegister);
+            if (currentValue != null && currentValue.Value == expectedValue)
+            {
+                // Tür ist bereits freigegeben - nichts tun
+                return true;
+            }
+
+            // Request-Register auf 1 setzen um Handshake zu starten
+            var success = await WriteRegisterAsync(requestRegister, 1);
+            if (!success) return false;
+
+            // Handshake zur Überwachung registrieren
+            lock (_handshakeLock)
+            {
+                _activeHandshakes[statusRegister] = (requestRegister, expectedValue);
+
+                // Timer starten falls noch nicht aktiv
+                if (_handshakeTimer == null)
+                {
+                    _handshakeTimer = new System.Threading.Timer(
+                        HandshakeTimerCallback,
+                        null,
+                        HANDSHAKE_POLL_INTERVAL_MS,
+                        HANDSHAKE_POLL_INTERVAL_MS);
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Door handshake failed for R[{requestRegister}]: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    private async void HandshakeTimerCallback(object? state)
+    {
+        if (_robot == null || !IsConnected) return;
+
+        List<(int statusRegister, int requestRegister)> completedHandshakes = new();
+
+        // Kopie der aktiven Handshakes erstellen
+        Dictionary<int, (int requestRegister, int expectedValue)> handshakesToCheck;
+        lock (_handshakeLock)
+        {
+            if (_activeHandshakes.Count == 0)
+            {
+                // Keine aktiven Handshakes - Timer stoppen
+                _handshakeTimer?.Dispose();
+                _handshakeTimer = null;
+                return;
+            }
+            handshakesToCheck = new Dictionary<int, (int, int)>(_activeHandshakes);
+        }
+
+        foreach (var kvp in handshakesToCheck)
+        {
+            int statusRegister = kvp.Key;
+            int requestRegister = kvp.Value.requestRegister;
+            int expectedValue = kvp.Value.expectedValue;
+
+            try
+            {
+                var currentValue = await ReadRegisterAsync(statusRegister);
+                if (currentValue != null && currentValue.Value == expectedValue)
+                {
+                    // Erwarteter Wert erreicht - Handshake abschließen
+                    completedHandshakes.Add((statusRegister, requestRegister));
+                }
+            }
+            catch
+            {
+                // Lesefehler ignorieren, beim nächsten Poll erneut versuchen
+            }
+        }
+
+        // Abgeschlossene Handshakes bearbeiten
+        foreach (var (statusRegister, requestRegister) in completedHandshakes)
+        {
+            try
+            {
+                // Request-Register auf 0 zurücksetzen
+                await WriteRegisterAsync(requestRegister, 0);
+            }
+            catch
+            {
+                // Schreibfehler ignorieren
+            }
+
+            lock (_handshakeLock)
+            {
+                _activeHandshakes.Remove(statusRegister);
+
+                // Timer stoppen wenn keine Handshakes mehr aktiv
+                if (_activeHandshakes.Count == 0)
+                {
+                    _handshakeTimer?.Dispose();
+                    _handshakeTimer = null;
+                }
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        _handshakeTimer?.Dispose();
+        _handshakeTimer = null;
+
+        if (_robot != null)
+        {
+            _robot.Disconnect();
+            _robot = null;
+        }
+
+        _isConnected = false;
+        _disposed = true;
+        GC.SuppressFinalize(this);
+    }
+}

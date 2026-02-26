@@ -1,0 +1,50 @@
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnCancel">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <h3 class="dialog-title">@Title</h3>
+                <button class="close-button" @onclick="OnCancel">×</button>
+            </div>
+
+            <div class="dialog-body">
+                <p>@Message</p>
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" @onclick="OnCancel">
+                    @CancelText
+                </button>
+                <button class="btn @ResolvedConfirmButtonClass" @onclick="OnConfirm">
+                    @ConfirmText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = "Bestätigung";
+    [Parameter] public string Message { get; set; } = "Möchten Sie fortfahren?";
+    [Parameter] public string ConfirmText { get; set; } = "Bestätigen";
+    [Parameter] public string CancelText { get; set; } = "Abbrechen";
+    [Parameter] public bool IsDangerous { get; set; }
+    [Parameter] public string? ConfirmButtonClass { get; set; }
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    private string ResolvedConfirmButtonClass =>
+        !string.IsNullOrEmpty(ConfirmButtonClass) ? ConfirmButtonClass :
+        IsDangerous ? "btn-danger" : "btn-primary";
+
+    private async Task OnConfirm()
+    {
+        await OnConfirmed.InvokeAsync();
+    }
+
+    private async Task OnCancel()
+    {
+        await OnCancelled.InvokeAsync();
+    }
+}

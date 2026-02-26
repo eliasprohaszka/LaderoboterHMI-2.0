@@ -1,0 +1,58 @@
+@inject ITranslationService T
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnCancel">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-orange-100 rounded-lg">
+                        <Blazicon Svg="Lucide.RefreshCw" class="w-5 h-5 text-orange-600" />
+                    </div>
+                    <h3 class="dialog-title">@T.Translate("changeMode.activate")</h3>
+                </div>
+                <button class="close-button" @onclick="OnCancel">×</button>
+            </div>
+
+            <div class="dialog-body">
+                <p class="mb-4">
+                    @T.Translate("changeMode.confirmQuestion", PaletteId)
+                </p>
+                <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                    <p class="font-medium mb-1">@T.Translate("changeMode.note")</p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li>@T.Translate("changeMode.robotGoesHome")</li>
+                        <li>@T.Translate("changeMode.doorReleased")</li>
+                        <li>@T.Translate("changeMode.workpiecesLocked")</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" @onclick="OnCancel">
+                    @T.Translate("common.cancel")
+                </button>
+                <button class="btn btn-warning" @onclick="OnConfirm">
+                    @T.Translate("changeMode.start")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public int PaletteId { get; set; }
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    private async Task OnConfirm()
+    {
+        await OnConfirmed.InvokeAsync();
+    }
+
+    private async Task OnCancel()
+    {
+        await OnCancelled.InvokeAsync();
+    }
+}

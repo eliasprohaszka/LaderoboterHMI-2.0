@@ -1,0 +1,17 @@
+@inject ITranslationService T
+
+<footer class="bg-gray-800 text-white py-3 px-6">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex justify-between items-center">
+            <!-- Company Info -->
+            <div>
+                <p class="text-sm">@T.Translate("footer.copyright")</p>
+            </div>
+
+            <!-- Version -->
+            <div>
+                <p class="text-xs text-gray-400">@T.Translate("common.version") 1.0.0</p>
+            </div>
+        </div>
+    </div>
+</footer>

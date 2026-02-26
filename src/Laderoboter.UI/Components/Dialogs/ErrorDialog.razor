@@ -1,0 +1,87 @@
+@inject IRobotService RobotService
+@inject ITranslationService T
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="error-overlay" @onclick="Close">
+        <div class="error-dialog" @onclick:stopPropagation="true">
+            <div class="error-header @SeverityClass">
+                <span class="error-icon">@SeverityIcon</span>
+                <h3 class="error-title">@Title</h3>
+                <button class="close-button" @onclick="Close">×</button>
+            </div>
+
+            <div class="error-body">
+                <p class="error-message">@Message</p>
+
+                @if (!string.IsNullOrEmpty(ErrorCode))
+                {
+                    <p class="error-code">@T.Translate("error.code"): @ErrorCode</p>
+                }
+            </div>
+
+            <div class="error-footer">
+                <button class="btn btn-primary" @onclick="Close">@T.Translate("common.ok")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool IsVisible { get; set; }
+    private string? Title { get; set; }
+    private string? Message { get; set; }
+    private string? ErrorCode { get; set; }
+    private ErrorSeverity Severity { get; set; }
+
+    private string SeverityClass => Severity switch
+    {
+        ErrorSeverity.Info => "info",
+        ErrorSeverity.Warning => "warning",
+        ErrorSeverity.Error => "error",
+        ErrorSeverity.Critical => "critical",
+        _ => "error"
+    };
+
+    private string SeverityIcon => Severity switch
+    {
+        ErrorSeverity.Info => "ℹ️",
+        ErrorSeverity.Warning => "⚠️",
+        ErrorSeverity.Error => "❌",
+        ErrorSeverity.Critical => "🚨",
+        _ => "❌"
+    };
+
+    protected override void OnInitialized()
+    {
+        RobotService.ErrorOccurred += OnErrorOccurred;
+    }
+
+    private void OnErrorOccurred(object? sender, Laderoboter.Core.Events.ErrorOccurredEventArgs e)
+    {
+        Title = e.Severity switch
+        {
+            ErrorSeverity.Info => T.Translate("error.title.info"),
+            ErrorSeverity.Warning => T.Translate("error.title.warning"),
+            ErrorSeverity.Error => T.Translate("error.title.error"),
+            ErrorSeverity.Critical => T.Translate("error.title.critical"),
+            _ => T.Translate("error.title.error")
+        };
+        Message = e.ErrorMessage;
+        ErrorCode = e.ErrorCode;
+        Severity = e.Severity;
+        IsVisible = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void Close()
+    {
+        IsVisible = false;
+    }
+
+    public void Dispose()
+    {
+        RobotService.ErrorOccurred -= OnErrorOccurred;
+    }
+}

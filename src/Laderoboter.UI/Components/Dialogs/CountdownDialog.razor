@@ -1,0 +1,46 @@
+@if (IsVisible)
+{
+    <div class="dialog-overlay">
+        <div class="dialog max-w-md" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <Blazicon Svg="@Icon" class="@IconClass" />
+                    </div>
+                    <h3 class="dialog-title">@Title</h3>
+                </div>
+            </div>
+
+            <div class="dialog-body text-center py-6">
+                <div class="@($"text-6xl font-bold mb-4 {CountdownClass}")">
+                    @Countdown
+                </div>
+                <p class="text-sm text-black">@Message</p>
+            </div>
+
+            <div class="dialog-footer justify-center">
+                <button class="btn @CancelButtonClass" @onclick="OnCancelClick">
+                    @CancelText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = "Countdown";
+    [Parameter] public string Message { get; set; } = "System wird heruntergefahren...";
+    [Parameter] public int Countdown { get; set; }
+    [Parameter] public SvgIcon Icon { get; set; } = Lucide.Power;
+    [Parameter] public string IconClass { get; set; } = "h-6 w-6 text-[#004F7C]";
+    [Parameter] public string CountdownClass { get; set; } = "text-[#004F7C]";
+    [Parameter] public string CancelText { get; set; } = "Abbrechen";
+    [Parameter] public string CancelButtonClass { get; set; } = "btn-danger";
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task OnCancelClick()
+    {
+        await OnCancel.InvokeAsync();
+    }
+}

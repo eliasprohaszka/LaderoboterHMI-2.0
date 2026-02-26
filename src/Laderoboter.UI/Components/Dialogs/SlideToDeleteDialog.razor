@@ -1,0 +1,202 @@
+@using Microsoft.JSInterop
+@inject ITranslationService T
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnCancel">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header danger">
+                <h3 class="dialog-title">@Title</h3>
+                <button class="close-button" @onclick="OnCancel">×</button>
+            </div>
+
+            <div class="dialog-body">
+                <p class="message">@Message</p>
+
+                <div class="slide-container">
+                    <div class="slide-track @(isConfirmed ? "confirmed" : "")" @ref="trackRef">
+                        <div class="slide-background">
+                            <span class="slide-text">@(isConfirmed ? T.Translate("common.confirmed") : T.Translate("common.slideToDelete"))</span>
+                        </div>
+                        <div class="slide-thumb @(isDragging ? "dragging" : "") @(isConfirmed ? "confirmed" : "")"
+                             style="transform: translateX(@(sliderPosition)px)"
+                             @onmousedown="StartDrag"
+                             @onmousedown:preventDefault
+                             @ontouchstart="StartTouchDrag"
+                             @ontouchstart:preventDefault>
+                            <div class="thumb-icon">
+                                @if (isConfirmed)
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="20 6 9 17 4 12"></polyline>
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <polyline points="9 18 15 12 9 6"></polyline>
+                                        <polyline points="15 18 21 12 15 6"></polyline>
+                                    </svg>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" @onclick="OnCancel">
+                    @T.Translate("common.cancel")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = "Löschen bestätigen";
+    [Parameter] public string Message { get; set; } = "Sind Sie sicher, dass Sie dieses Element löschen möchten?";
+    [Parameter] public EventCallback OnCancelled { get; set; }
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+
+    private ElementReference trackRef;
+    private DotNetObjectReference<SlideToDeleteDialog>? dotNetRef;
+    private IJSObjectReference? jsModule;
+
+    private bool isDragging = false;
+    private bool isConfirmed = false;
+    private double sliderPosition = 0;
+    private const double TRACK_WIDTH = 280;
+    private const double THUMB_WIDTH = 48;
+    private const double MAX_POSITION = TRACK_WIDTH - THUMB_WIDTH - 8;
+    private const double CONFIRM_THRESHOLD = 0.85;
+
+    private bool wasVisible = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            dotNetRef = DotNetObjectReference.Create(this);
+            try
+            {
+                jsModule = await JS.InvokeAsync<IJSObjectReference>("import",
+                    "./_content/Laderoboter.UI/js/slideToDelete.js");
+            }
+            catch
+            {
+                // JS module not available
+            }
+        }
+
+        if (IsVisible && !wasVisible && jsModule != null && dotNetRef != null)
+        {
+            try
+            {
+                await jsModule.InvokeVoidAsync("initSlider", dotNetRef, trackRef, MAX_POSITION);
+            }
+            catch
+            {
+                // Ignore
+            }
+        }
+
+        wasVisible = IsVisible;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible && !wasVisible)
+        {
+            ResetSlider();
+        }
+    }
+
+    private void ResetSlider()
+    {
+        sliderPosition = 0;
+        isDragging = false;
+        isConfirmed = false;
+    }
+
+    private void StartDrag(MouseEventArgs e)
+    {
+        if (isConfirmed) return;
+        isDragging = true;
+    }
+
+    private void StartTouchDrag(TouchEventArgs e)
+    {
+        if (isConfirmed) return;
+        isDragging = true;
+    }
+
+    [JSInvokable]
+    public void UpdateSliderPosition(double position)
+    {
+        if (isConfirmed) return;
+
+        sliderPosition = Math.Max(0, Math.Min(position, MAX_POSITION));
+
+        if (sliderPosition >= MAX_POSITION * CONFIRM_THRESHOLD)
+        {
+            _ = ConfirmDeleteAsync();
+        }
+
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void EndDrag()
+    {
+        if (isConfirmed) return;
+
+        isDragging = false;
+
+        if (sliderPosition < MAX_POSITION * CONFIRM_THRESHOLD)
+        {
+            sliderPosition = 0;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (isConfirmed) return;
+
+        isConfirmed = true;
+        sliderPosition = MAX_POSITION;
+        isDragging = false;
+        StateHasChanged();
+
+        await Task.Delay(400);
+        await OnConfirmed.InvokeAsync();
+    }
+
+    private async Task OnCancel()
+    {
+        ResetSlider();
+        await OnCancelled.InvokeAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (jsModule != null)
+        {
+            try
+            {
+                await jsModule.InvokeVoidAsync("disposeSlider");
+                await jsModule.DisposeAsync();
+            }
+            catch
+            {
+                // Ignore
+            }
+        }
+        dotNetRef?.Dispose();
+    }
+}

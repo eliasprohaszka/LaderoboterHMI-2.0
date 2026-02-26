@@ -1,0 +1,585 @@
+@page "/translations"
+@inject ITranslationService T
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="h-full">
+    <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center space-x-3">
+                    <button
+                        class="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                        @onclick="NavigateBack">
+                        <Blazicon Svg="Lucide.ChevronLeft" class="w-5 h-5 text-gray-600" />
+                    </button>
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <Blazicon Svg="Lucide.Globe" class="w-5 h-5 text-primary" />
+                    </div>
+                    <div class="text-left">
+                        <span class="font-semibold text-lg">@T.Translate("translations.title")</span>
+                        <p class="text-sm text-gray-600 mt-1">@T.Translate("translations.description")</p>
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button
+                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center"
+                        @onclick="ExportAll">
+                        <Blazicon Svg="Lucide.Download" class="w-4 h-4 mr-2" />
+                        @T.Translate("translations.export")
+                    </button>
+                    <button
+                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center"
+                        @onclick="ShowImportDialog">
+                        <Blazicon Svg="Lucide.Upload" class="w-4 h-4 mr-2" />
+                        @T.Translate("translations.import")
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="px-6 pb-6 flex-1 overflow-hidden">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 h-full">
+                <!-- Languages Panel (Left) -->
+                <div class="bg-white/40 backdrop-blur-sm rounded-xl p-4 shadow-lg md:col-span-1 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <Blazicon Svg="Lucide.Globe" class="w-5 h-5 text-primary" />
+                            <h3 class="font-semibold">@T.Translate("translations.languages")</h3>
+                        </div>
+                        <button
+                            class="p-1.5 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors"
+                            @onclick="ShowAddLanguageDialog">
+                            <Blazicon Svg="Lucide.Plus" class="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    <div class="flex-1 overflow-auto space-y-2">
+                        @foreach (var lang in languages)
+                        {
+                            <div class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors @(selectedLanguageId == lang.Id ? "bg-primary/20 border border-primary" : "bg-white/50 hover:bg-white/70")"
+                                 @onclick="() => SelectLanguage(lang.Id)">
+                                <div class="flex items-center space-x-2">
+                                    <div class="flex flex-col">
+                                        <button class="p-0.5 text-gray-400 hover:text-primary hover:bg-gray-100 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                disabled="@(languages.IndexOf(lang) == 0)"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => MoveLanguageUp(lang)">
+                                            <Blazicon Svg="Lucide.ChevronUp" class="w-3 h-3" />
+                                        </button>
+                                        <button class="p-0.5 text-gray-400 hover:text-primary hover:bg-gray-100 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                                                disabled="@(languages.IndexOf(lang) == languages.Count - 1)"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="() => MoveLanguageDown(lang)">
+                                            <Blazicon Svg="Lucide.ChevronDown" class="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium">@lang.NativeName</div>
+                                        <div class="text-xs text-gray-500">@lang.Code</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    @{
+                                        var missingCount = missingCounts.GetValueOrDefault(lang.Id, 0);
+                                    }
+                                    @if (missingCount > 0)
+                                    {
+                                        <span class="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full flex items-center">
+                                            <Blazicon Svg="Lucide.TriangleAlert" class="w-3 h-3 mr-1" />
+                                            @missingCount
+                                        </span>
+                                    }
+                                    <button
+                                        class="w-10 h-5 rounded-full transition-colors duration-200 @(lang.IsActive ? "bg-green-500" : "bg-gray-300")"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => ToggleLanguageActive(lang)">
+                                        <div class="w-4 h-4 bg-white rounded-full shadow transform transition-transform duration-200 @(lang.IsActive ? "translate-x-5" : "translate-x-0.5")"></div>
+                                    </button>
+                                    <button
+                                        class="p-1 text-red-500 hover:bg-red-100 rounded transition-colors"
+                                        @onclick:stopPropagation="true"
+                                        @onclick="() => DeleteLanguage(lang)">
+                                        <Blazicon Svg="Lucide.Trash2" class="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Translations Panel (Right) -->
+                <div class="bg-white/40 backdrop-blur-sm rounded-xl p-4 shadow-lg md:col-span-3 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-2">
+                            <Blazicon Svg="Lucide.Pencil" class="w-5 h-5 text-primary" />
+                            <h3 class="font-semibold">@T.Translate("translations.translations")</h3>
+                        </div>
+                    </div>
+
+                    <!-- Filter Bar -->
+                    <div class="flex gap-4 mb-4">
+                        <div class="relative flex-1">
+                            <Blazicon Svg="Lucide.Search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input type="text"
+                                   class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                                   placeholder="@T.Translate("translations.search")"
+                                   @bind="searchTerm"
+                                   @bind:event="oninput"
+                                   @onkeyup="OnSearchChanged" />
+                        </div>
+                        <select
+                            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                            @bind="selectedCategory"
+                            @bind:after="LoadTranslations">
+                            <option value="">@T.Translate("translations.allCategories")</option>
+                            @foreach (var cat in categories)
+                            {
+                                <option value="@cat">@cat</option>
+                            }
+                        </select>
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox"
+                                   class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                   @bind="showMissingOnly"
+                                   @bind:after="LoadTranslations" />
+                            <span class="text-sm">@T.Translate("translations.missingOnly")</span>
+                        </label>
+                    </div>
+
+                    <!-- Translation Keys List -->
+                    <div class="flex-1 overflow-auto space-y-3">
+                        @if (isLoading)
+                        {
+                            <div class="flex items-center justify-center h-32">
+                                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                            </div>
+                        }
+                        else if (!groupedTranslations.Any())
+                        {
+                            <div class="text-center text-gray-500 py-8">
+                                @T.Translate("translations.noResults")
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var group in groupedTranslations)
+                            {
+                                <div class="bg-white/60 rounded-lg p-4 shadow-sm">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <div>
+                                            <code class="text-sm font-mono bg-gray-100 px-2 py-1 rounded">@group.Key</code>
+                                            @if (!string.IsNullOrEmpty(group.First().Category))
+                                            {
+                                                <span class="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">@group.First().Category</span>
+                                            }
+                                        </div>
+                                    </div>
+                                    <div class="space-y-2">
+                                        @foreach (var lang in languages)
+                                        {
+                                            var translation = group.FirstOrDefault(t => t.LanguageId == lang.Id);
+                                            <div class="flex items-center gap-3">
+                                                <span class="w-8 text-xs font-semibold text-gray-500 uppercase">@lang.Code</span>
+                                                @if (translation != null)
+                                                {
+                                                    @if (editingTranslationId == translation.Id)
+                                                    {
+                                                        <input type="text"
+                                                               class="flex-1 px-3 py-1.5 border border-primary rounded focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                                                               @bind="editingValue"
+                                                               @onkeydown="OnEditKeyDown" />
+                                                        <button class="p-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                                                                @onclick="SaveEdit">
+                                                            <Blazicon Svg="Lucide.Save" class="w-4 h-4" />
+                                                        </button>
+                                                        <button class="p-1.5 bg-gray-400 text-white rounded hover:bg-gray-500 transition-colors"
+                                                                @onclick="CancelEdit">
+                                                            <Blazicon Svg="Lucide.X" class="w-4 h-4" />
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="flex-1 text-sm text-gray-700">@translation.Value</span>
+                                                        <button class="p-1.5 text-gray-500 hover:bg-gray-100 rounded transition-colors"
+                                                                @onclick="() => StartEdit(translation)">
+                                                            <Blazicon Svg="Lucide.Pencil" class="w-4 h-4" />
+                                                        </button>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    @if (addingTranslationKey == group.Key && addingLanguageId == lang.Id)
+                                                    {
+                                                        <input type="text"
+                                                               class="flex-1 px-3 py-1.5 border border-primary rounded focus:ring-2 focus:ring-primary focus:border-transparent text-sm"
+                                                               @bind="addingValue"
+                                                               @onkeydown="OnAddKeyDown" />
+                                                        <button class="p-1.5 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                                                                @onclick="SaveNewTranslation">
+                                                            <Blazicon Svg="Lucide.Save" class="w-4 h-4" />
+                                                        </button>
+                                                        <button class="p-1.5 bg-gray-400 text-white rounded hover:bg-gray-500 transition-colors"
+                                                                @onclick="CancelAdd">
+                                                            <Blazicon Svg="Lucide.X" class="w-4 h-4" />
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="flex-1 text-sm text-gray-400 italic flex items-center">
+                                                            <Blazicon Svg="Lucide.TriangleAlert" class="w-4 h-4 text-yellow-500 mr-2" />
+                                                            @T.Translate("translations.missing")
+                                                        </span>
+                                                        <button class="p-1.5 text-primary hover:bg-primary/10 rounded transition-colors"
+                                                                @onclick="() => StartAdd(group.Key, lang.Id)">
+                                                            <Blazicon Svg="Lucide.Plus" class="w-4 h-4" />
+                                                        </button>
+                                                    }
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Language Dialog -->
+<AddLanguageDialog IsVisible="showAddLanguage"
+                   OnCancelled="CloseAddLanguageDialog"
+                   OnConfirmed="OnAddLanguageConfirmed" />
+
+<!-- Import Dialog -->
+<ImportTranslationsDialog IsVisible="showImport"
+                          OnCancelled="CloseImportDialog"
+                          OnConfirmed="OnImportConfirmed" />
+
+<!-- Delete Language Dialog -->
+<SlideToDeleteDialog IsVisible="showDeleteConfirm"
+                     Title="@T.Translate("translations.deleteLanguage")"
+                     Message="@deleteConfirmMessage"
+                     OnCancelled="CloseDeleteDialog"
+                     OnConfirmed="OnDeleteConfirmed" />
+
+@code {
+    private List<Language> languages = new();
+    private Dictionary<int, int> missingCounts = new();
+    private List<string> categories = new();
+    private IEnumerable<IGrouping<string, Translation>> groupedTranslations = Enumerable.Empty<IGrouping<string, Translation>>();
+
+    private int? selectedLanguageId;
+    private string searchTerm = "";
+    private string selectedCategory = "";
+    private bool showMissingOnly = false;
+    private bool isLoading = true;
+
+    // Edit state
+    private int? editingTranslationId;
+    private string editingValue = "";
+
+    // Add translation state
+    private string? addingTranslationKey;
+    private int? addingLanguageId;
+    private string addingValue = "";
+
+    // Add language dialog
+    private bool showAddLanguage = false;
+
+    // Import dialog
+    private bool showImport = false;
+
+    // Delete confirmation dialog
+    private bool showDeleteConfirm = false;
+    private Language? languageToDelete;
+    private string deleteConfirmMessage = "";
+
+    private System.Timers.Timer? searchDebounceTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        T.LanguageChanged += OnLanguageChanged;
+        await LoadLanguages();
+        await LoadCategories();
+        await LoadTranslations();
+    }
+
+    private async void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadLanguages()
+    {
+        var allLanguages = await T.GetAvailableLanguagesAsync();
+        languages = allLanguages.ToList();
+
+        missingCounts.Clear();
+        foreach (var lang in languages)
+        {
+            missingCounts[lang.Id] = await T.GetMissingTranslationsCountAsync(lang.Id);
+        }
+    }
+
+    private async Task LoadCategories()
+    {
+        var cats = await T.GetCategoriesAsync();
+        categories = cats.ToList();
+    }
+
+    private async Task LoadTranslations()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        var translations = await T.SearchTranslationsAsync(
+            string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm,
+            string.IsNullOrWhiteSpace(selectedCategory) ? null : selectedCategory);
+
+        if (showMissingOnly)
+        {
+            var allKeys = translations.Select(t => t.Key).Distinct().ToList();
+            var keysWithMissing = new HashSet<string>();
+
+            foreach (var key in allKeys)
+            {
+                var keyTranslations = translations.Where(t => t.Key == key).ToList();
+                if (keyTranslations.Count < languages.Count)
+                {
+                    keysWithMissing.Add(key);
+                }
+            }
+
+            translations = translations.Where(t => keysWithMissing.Contains(t.Key));
+        }
+
+        groupedTranslations = translations.GroupBy(t => t.Key).OrderBy(g => g.Key);
+
+        isLoading = false;
+        StateHasChanged();
+    }
+
+    private void SelectLanguage(int languageId)
+    {
+        selectedLanguageId = selectedLanguageId == languageId ? null : languageId;
+    }
+
+    private async Task ToggleLanguageActive(Language lang)
+    {
+        await T.UpdateLanguageAsync(lang.Id, lang.Name, lang.NativeName, !lang.IsActive, lang.SortOrder);
+        await LoadLanguages();
+    }
+
+    private async Task MoveLanguageUp(Language lang)
+    {
+        var index = languages.IndexOf(lang);
+        if (index <= 0) return;
+
+        await SwapLanguages(index, index - 1);
+    }
+
+    private async Task MoveLanguageDown(Language lang)
+    {
+        var index = languages.IndexOf(lang);
+        if (index < 0 || index >= languages.Count - 1) return;
+
+        await SwapLanguages(index, index + 1);
+    }
+
+    private async Task SwapLanguages(int indexA, int indexB)
+    {
+        var langA = languages[indexA];
+        var langB = languages[indexB];
+
+        await T.UpdateLanguageAsync(langA.Id, langA.Name, langA.NativeName, langA.IsActive, indexB);
+        await T.UpdateLanguageAsync(langB.Id, langB.Name, langB.NativeName, langB.IsActive, indexA);
+
+        await LoadLanguages();
+    }
+
+    private void DeleteLanguage(Language lang)
+    {
+        languageToDelete = lang;
+        deleteConfirmMessage = $"{T.Translate("translations.deleteLanguageConfirm")} \"{lang.NativeName}\" ({lang.Code})?";
+        showDeleteConfirm = true;
+    }
+
+    private void CloseDeleteDialog()
+    {
+        showDeleteConfirm = false;
+        languageToDelete = null;
+    }
+
+    private async Task OnDeleteConfirmed()
+    {
+        if (languageToDelete != null)
+        {
+            await T.DeleteLanguageAsync(languageToDelete.Id);
+            await LoadLanguages();
+            await LoadTranslations();
+        }
+        showDeleteConfirm = false;
+        languageToDelete = null;
+    }
+
+    private void ShowAddLanguageDialog()
+    {
+        showAddLanguage = true;
+    }
+
+    private void CloseAddLanguageDialog()
+    {
+        showAddLanguage = false;
+    }
+
+    private async Task OnAddLanguageConfirmed((string Code, string Name, string NativeName) data)
+    {
+        await T.AddLanguageAsync(data.Code, data.Name, data.NativeName);
+        await LoadLanguages();
+        showAddLanguage = false;
+    }
+
+    private void StartEdit(Translation translation)
+    {
+        editingTranslationId = translation.Id;
+        editingValue = translation.Value;
+    }
+
+    private void CancelEdit()
+    {
+        editingTranslationId = null;
+        editingValue = "";
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingTranslationId.HasValue)
+        {
+            await T.UpdateTranslationAsync(editingTranslationId.Value, editingValue);
+            editingTranslationId = null;
+            editingValue = "";
+            await LoadTranslations();
+        }
+    }
+
+    private async Task OnEditKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveEdit();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelEdit();
+        }
+    }
+
+    private void StartAdd(string key, int languageId)
+    {
+        addingTranslationKey = key;
+        addingLanguageId = languageId;
+        addingValue = "";
+    }
+
+    private void CancelAdd()
+    {
+        addingTranslationKey = null;
+        addingLanguageId = null;
+        addingValue = "";
+    }
+
+    private async Task SaveNewTranslation()
+    {
+        if (addingTranslationKey != null && addingLanguageId.HasValue && !string.IsNullOrWhiteSpace(addingValue))
+        {
+            var category = addingTranslationKey.Split('.').FirstOrDefault();
+            await T.AddTranslationAsync(addingLanguageId.Value, addingTranslationKey, addingValue, category);
+            addingTranslationKey = null;
+            addingLanguageId = null;
+            addingValue = "";
+            await LoadLanguages();
+            await LoadTranslations();
+        }
+    }
+
+    private async Task OnAddKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveNewTranslation();
+        }
+        else if (e.Key == "Escape")
+        {
+            CancelAdd();
+        }
+    }
+
+    private void OnSearchChanged()
+    {
+        searchDebounceTimer?.Stop();
+        searchDebounceTimer?.Dispose();
+
+        searchDebounceTimer = new System.Timers.Timer(300);
+        searchDebounceTimer.Elapsed += async (s, e) =>
+        {
+            searchDebounceTimer?.Stop();
+            await InvokeAsync(async () =>
+            {
+                await LoadTranslations();
+            });
+        };
+        searchDebounceTimer.AutoReset = false;
+        searchDebounceTimer.Start();
+    }
+
+    private async Task ExportAll()
+    {
+        var json = await T.ExportTranslationsAsync();
+        // In a real app, this would trigger a file download
+        // For now, we'll copy to clipboard via JS interop
+        Console.WriteLine(json);
+    }
+
+    private void ShowImportDialog()
+    {
+        showImport = true;
+    }
+
+    private void CloseImportDialog()
+    {
+        showImport = false;
+    }
+
+    private async Task OnImportConfirmed((string Json, bool Overwrite) data)
+    {
+        try
+        {
+            await T.ImportTranslationsAsync(data.Json, data.Overwrite);
+            await LoadLanguages();
+            await LoadCategories();
+            await LoadTranslations();
+            showImport = false;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Import error: {ex.Message}");
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    public void Dispose()
+    {
+        T.LanguageChanged -= OnLanguageChanged;
+        searchDebounceTimer?.Dispose();
+    }
+}

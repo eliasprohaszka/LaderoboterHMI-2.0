@@ -1,0 +1,19 @@
+@using Laderoboter.UI.Components.Layout
+@using Laderoboter.UI.Pages
+
+<Router AppAssembly="@typeof(Laderoboter.UI.Pages.MainPage).Assembly"
+        AdditionalAssemblies="new[] { typeof(MauiProgram).Assembly }">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div style="text-align: center; padding: 2rem;">
+                <h2>Seite nicht gefunden</h2>
+                <p>Die angeforderte Seite existiert nicht.</p>
+                <a href="/">Zur Startseite</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

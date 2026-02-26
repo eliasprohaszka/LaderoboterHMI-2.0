@@ -1,0 +1,56 @@
+@using Laderoboter.Core.Models
+@using static Laderoboter.UI.Components.Main.PaletteCard
+
+<!-- PaletteSection (exact match to PaletteSection.vue) -->
+<div class="grid grid-cols-2 xl:grid-cols-2 gap-6 px-3 py-4 flex-1 min-h-0 h-full">
+    <PaletteCard
+        PaletteId="1"
+        Title="Palette 1"
+        Workpieces="@Palette1Workpieces"
+        Mode="@Palette1Mode"
+        IsInProgress="@Palette1InProgress"
+        ProgressStep="@Palette1ProgressStep"
+        ShowProcessingIndicator="@Palette1ShowProcessing"
+        QueueLength="@Palette1QueueLength"
+        OnReset="@(() => OnPalette1Reset.InvokeAsync())"
+        OnToggleMode="@(() => OnPalette1ToggleMode.InvokeAsync())"
+        OnWorkpieceClick="OnWorkpieceClick" />
+
+    <PaletteCard
+        PaletteId="2"
+        Title="Palette 2"
+        Workpieces="@Palette2Workpieces"
+        Mode="@Palette2Mode"
+        IsInProgress="@Palette2InProgress"
+        ProgressStep="@Palette2ProgressStep"
+        ShowProcessingIndicator="@Palette2ShowProcessing"
+        QueueLength="@Palette2QueueLength"
+        OnReset="@(() => OnPalette2Reset.InvokeAsync())"
+        OnToggleMode="@(() => OnPalette2ToggleMode.InvokeAsync())"
+        OnWorkpieceClick="OnWorkpieceClick" />
+</div>
+
+@code {
+    // Palette 1
+    [Parameter] public List<WorkpieceStatus> Palette1Workpieces { get; set; } = new();
+    [Parameter] public PaletteMode Palette1Mode { get; set; } = PaletteMode.Active;
+    [Parameter] public bool Palette1InProgress { get; set; }
+    [Parameter] public int Palette1ProgressStep { get; set; }
+    [Parameter] public bool Palette1ShowProcessing { get; set; }
+    [Parameter] public int Palette1QueueLength { get; set; }
+
+    // Palette 2
+    [Parameter] public List<WorkpieceStatus> Palette2Workpieces { get; set; } = new();
+    [Parameter] public PaletteMode Palette2Mode { get; set; } = PaletteMode.Active;
+    [Parameter] public bool Palette2InProgress { get; set; }
+    [Parameter] public int Palette2ProgressStep { get; set; }
+    [Parameter] public bool Palette2ShowProcessing { get; set; }
+    [Parameter] public int Palette2QueueLength { get; set; }
+
+    // Events
+    [Parameter] public EventCallback OnPalette1Reset { get; set; }
+    [Parameter] public EventCallback OnPalette1ToggleMode { get; set; }
+    [Parameter] public EventCallback OnPalette2Reset { get; set; }
+    [Parameter] public EventCallback OnPalette2ToggleMode { get; set; }
+    [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
+}

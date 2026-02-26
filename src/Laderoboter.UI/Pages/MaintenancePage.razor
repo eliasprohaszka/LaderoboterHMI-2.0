@@ -1,0 +1,397 @@
+@page "/maintenance"
+@using Laderoboter.Core.Models
+@using Laderoboter.Core.Services
+@inject IRobotService RobotService
+@inject ISystemService SystemService
+@inject ITranslationService T
+@implements IDisposable
+
+<div class="h-full">
+    <!-- Maintenance Section (exact match to maintenance.vue) -->
+    <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-yellow-100 rounded-lg">
+                        <Blazicon Svg="Lucide.Settings" class="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <div class="text-left">
+                        <span class="font-semibold text-lg">@T.Translate("maintenance.title")</span>
+                        <p class="text-sm text-gray-600 mt-1">@T.Translate("maintenance.description")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="px-6 pb-6 flex-1 overflow-hidden">
+            <MaintenanceGrid>
+                <!-- Werkstück ablegen -->
+                <MaintenanceActionTile
+                    Icon="Lucide.ArrowBigDownDash"
+                    Label="@T.Translate("maintenance.layDown")"
+                    Disabled="@(!RobotService.IsConnected)"
+                    OnClick="ShowLayDownConfirmation" />
+
+                <!-- Werkstück abholen -->
+                <MaintenanceActionTile
+                    Icon="Lucide.ArrowBigUpDash"
+                    Label="@T.Translate("maintenance.pickUp")"
+                    Disabled="@(!RobotService.IsConnected)"
+                    OnClick="ShowPickUpConfirmation" />
+
+                <!-- Home Position -->
+                <MaintenanceActionTile
+                    Icon="Lucide.House"
+                    Label="@T.Translate("maintenance.homePosition")"
+                    Disabled="@(!RobotService.IsConnected)"
+                    OnClick="ShowHomeConfirmation" />
+
+                <!-- Wartungstür -->
+                <MaintenanceActionTile
+                    Icon="Lucide.DoorOpen"
+                    Label="@T.Translate("maintenance.maintenanceDoor")"
+                    Sublabel="@T.Translate("maintenance.release")"
+                    Disabled="@(!RobotService.IsConnected)"
+                    OnClick="ToggleMaintenanceDoor" />
+
+                <!-- Ladetür -->
+                <MaintenanceSplitTile
+                    IconLeft="Lucide.DoorOpen"
+                    LabelLeft="@T.Translate("maintenance.loadDoor")"
+                    SublabelLeft="@T.Translate("maintenance.open")"
+                    DisabledLeft="@(!RobotService.IsConnected)"
+                    OnClickLeft="OpenLoadDoor"
+                    IconRight="Lucide.DoorClosed"
+                    LabelRight="@T.Translate("maintenance.loadDoor")"
+                    SublabelRight="@T.Translate("maintenance.close")"
+                    DisabledRight="@(!RobotService.IsConnected)"
+                    OnClickRight="CloseLoadDoor" />
+
+                <!-- Palettentür -->
+                <MaintenanceSplitTile
+                    IconLeft="Lucide.DoorOpen"
+                    LabelLeft="@T.Translate("maintenance.paletteDoor1")"
+                    SublabelLeft="@T.Translate("maintenance.release")"
+                    DisabledLeft="@(!RobotService.IsConnected)"
+                    OnClickLeft="() => TogglePaletteDoor(1)"
+                    IconRight="Lucide.DoorOpen"
+                    LabelRight="@T.Translate("maintenance.paletteDoor2")"
+                    SublabelRight="@T.Translate("maintenance.release")"
+                    DisabledRight="@(!RobotService.IsConnected)"
+                    OnClickRight="() => TogglePaletteDoor(2)" />
+
+                <!-- I/O Signale und Fehler löschen -->
+                <MaintenanceSplitTile
+                    IconLeft="Lucide.Activity"
+                    LabelLeft="@T.Translate("maintenance.ioSignals")"
+                    DisabledLeft="@(!RobotService.IsConnected)"
+                    OnClickLeft="ShowIOSignals"
+                    IconRight="Lucide.CircleAlert"
+                    LabelRight="@(hasActiveError ? T.Translate("maintenance.clearError") : T.Translate("maintenance.noError"))"
+                    DisabledRight="@(!RobotService.IsConnected || !hasActiveError)"
+                    OnClickRight="ClearRobotError" />
+
+                <!-- RESET und STOP -->
+                <MaintenanceSplitTile
+                    IconLeft="Lucide.RefreshCw"
+                    LabelLeft="@T.Translate("maintenance.reset")"
+                    DisabledLeft="@(!RobotService.IsConnected)"
+                    VariantLeft="secondary"
+                    OnClickLeft="PerformReset"
+                    IconRight="Lucide.Square"
+                    LabelRight="@T.Translate("maintenance.programStop")"
+                    DisabledRight="@(!RobotService.IsConnected)"
+                    VariantRight="danger"
+                    OnClickRight="EmergencyStop" />
+
+                <!-- PC Neustart/Herunterfahren -->
+                <MaintenanceSplitTile
+                    IconLeft="Lucide.RotateCcw"
+                    LabelLeft="@T.Translate("maintenance.pcRestart")"
+                    OnClickLeft="ShowRestartConfirmation"
+                    IconRight="Lucide.Power"
+                    LabelRight="@T.Translate("maintenance.pcShutdown")"
+                    OnClickRight="ShowShutdownConfirmation" />
+            </MaintenanceGrid>
+        </div>
+    </div>
+</div>
+
+<!-- Home Confirmation Dialog -->
+<ConfirmationDialog IsVisible="@showHomeDialog"
+                   Title="@T.Translate("maintenance.homeDialog.title")"
+                   Message="@T.Translate("maintenance.homeDialog.message")"
+                   ConfirmText="@T.Translate("maintenance.homeDialog.confirm")"
+                   CancelText="@T.Translate("common.cancel")"
+                   OnConfirmed="ConfirmGoToHome"
+                   OnCancelled="() => showHomeDialog = false" />
+
+<!-- Pick Up Confirmation Dialog -->
+<ConfirmationDialog IsVisible="@showPickUpDialog"
+                   Title="@T.Translate("maintenance.pickUpDialog.title")"
+                   Message="@T.Translate("maintenance.pickUpDialog.message")"
+                   ConfirmText="@T.Translate("maintenance.pickUpDialog.confirm")"
+                   CancelText="@T.Translate("common.cancel")"
+                   OnConfirmed="ConfirmPickUp"
+                   OnCancelled="() => showPickUpDialog = false" />
+
+<!-- Lay Down Dialog with workpiece selection -->
+<LayDownDialog IsVisible="@showLayDownDialog"
+              Title="@T.Translate("maintenance.layDownDialog.title")"
+              Message="@T.Translate("maintenance.layDownDialog.message")"
+              SelectLabel="@T.Translate("maintenance.layDownDialog.selectLabel")"
+              Palette1="@RobotService.Palette1"
+              Palette2="@RobotService.Palette2"
+              CancelText="@T.Translate("common.cancel")"
+              ConfirmTextWithWorkpiece="@T.Translate("maintenance.layDownDialog.confirmWithId")"
+              ConfirmTextGeneral="@T.Translate("maintenance.layDownDialog.confirm")"
+              OnConfirmed="ConfirmLayDown"
+              OnCancelled="() => showLayDownDialog = false" />
+
+<!-- Shutdown Confirmation Dialog -->
+<ConfirmationDialog IsVisible="@showShutdownDialog"
+                   Title="@T.Translate("maintenance.shutdownDialog.title")"
+                   Message="@T.Translate("maintenance.shutdownDialog.message")"
+                   ConfirmText="@T.Translate("maintenance.shutdownDialog.confirm")"
+                   CancelText="@T.Translate("common.cancel")"
+                   ConfirmButtonClass="bg-red-600"
+                   OnConfirmed="ConfirmShutdown"
+                   OnCancelled="() => showShutdownDialog = false" />
+
+<!-- Restart Confirmation Dialog -->
+<ConfirmationDialog IsVisible="@showRestartDialog"
+                   Title="@T.Translate("maintenance.restartDialog.title")"
+                   Message="@T.Translate("maintenance.restartDialog.message")"
+                   ConfirmText="@T.Translate("maintenance.restartDialog.confirm")"
+                   CancelText="@T.Translate("common.cancel")"
+                   ConfirmButtonClass="bg-blue-600"
+                   OnConfirmed="ConfirmRestart"
+                   OnCancelled="() => showRestartDialog = false" />
+
+<!-- Shutdown Countdown Dialog -->
+<CountdownDialog IsVisible="@showShutdownCountdownDialog"
+                Title="@T.Translate("maintenance.shutdownCountdown.title")"
+                Message="@T.Translate("maintenance.shutdownCountdown.message", shutdownCountdown)"
+                Countdown="@shutdownCountdown"
+                Icon="Lucide.Power"
+                IconClass="h-6 w-6 text-red-600"
+                CountdownClass="text-red-600"
+                CancelText="@T.Translate("common.cancel")"
+                CancelButtonClass="btn-danger"
+                OnCancel="CancelSystemAction" />
+
+<!-- Restart Countdown Dialog -->
+<CountdownDialog IsVisible="@showRestartCountdownDialog"
+                Title="@T.Translate("maintenance.restartCountdown.title")"
+                Message="@T.Translate("maintenance.restartCountdown.message", restartCountdown)"
+                Countdown="@restartCountdown"
+                Icon="Lucide.RotateCcw"
+                IconClass="h-6 w-6 text-blue-600"
+                CountdownClass="text-blue-600"
+                CancelText="@T.Translate("common.cancel")"
+                CancelButtonClass="btn-blue"
+                OnCancel="CancelSystemAction" />
+
+<!-- IO Signals Dialog -->
+<IoSignalsDialog IsVisible="@showIOSignalsDialog"
+                OnClose="() => showIOSignalsDialog = false" />
+
+@code {
+    // Dialog states
+    private bool showHomeDialog = false;
+    private bool showLayDownDialog = false;
+    private bool showPickUpDialog = false;
+    private bool showShutdownDialog = false;
+    private bool showRestartDialog = false;
+    private bool showShutdownCountdownDialog = false;
+    private bool showRestartCountdownDialog = false;
+    private bool showIOSignalsDialog = false;
+
+    // Countdown states
+    private int shutdownCountdown = 0;
+    private int restartCountdown = 0;
+    private System.Threading.Timer? countdownTimer;
+
+    // State
+    private bool hasActiveError = false;
+
+    protected override void OnInitialized()
+    {
+        RobotService.StatusChanged += OnStatusChanged;
+        T.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)
+    {
+        hasActiveError = !string.IsNullOrEmpty(e.Status.ErrorMessage);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    // Show dialogs
+    private void ShowHomeConfirmation() => showHomeDialog = true;
+    private void ShowLayDownConfirmation() => showLayDownDialog = true;
+    private void ShowPickUpConfirmation() => showPickUpDialog = true;
+    private void ShowShutdownConfirmation() => showShutdownDialog = true;
+    private void ShowRestartConfirmation() => showRestartDialog = true;
+    private void ShowIOSignals() => showIOSignalsDialog = true;
+
+    // Confirm actions
+    private async Task ConfirmGoToHome()
+    {
+        showHomeDialog = false;
+        await RobotService.StopProgramAsync();
+        await RobotService.RunProgramAsync("go_to_home");
+    }
+
+    private async Task ConfirmPickUp()
+    {
+        showPickUpDialog = false;
+        await RobotService.StopProgramAsync();
+        await RobotService.RunProgramAsync("fs_pick_up_ui");
+    }
+
+    private async Task ConfirmLayDown(WorkpieceStatus selectedWorkpiece)
+    {
+        showLayDownDialog = false;
+
+        if (selectedWorkpiece == null || selectedWorkpiece.RegisterAddress == 0)
+        {
+            return;
+        }
+
+        // Stop all running programs
+        await RobotService.StopProgramAsync();
+
+        // Wait a moment for the stop to complete
+        await Task.Delay(1000);
+
+        // Set Register 175 to workpiece register address and start lay down handshake
+        await RobotService.WriteRegisterAsync(175, selectedWorkpiece.RegisterAddress);
+
+        // Then start the lay_down_ui program
+        await RobotService.RunProgramAsync("lay_down_ui");
+    }
+
+    private async Task ConfirmShutdown()
+    {
+        showShutdownDialog = false;
+
+        var success = await SystemService.ShutdownAsync(15);
+        if (success)
+        {
+            shutdownCountdown = 15;
+            showShutdownCountdownDialog = true;
+            StartCountdown("shutdown");
+        }
+    }
+
+    private async Task ConfirmRestart()
+    {
+        showRestartDialog = false;
+
+        var success = await SystemService.RestartAsync(15);
+        if (success)
+        {
+            restartCountdown = 15;
+            showRestartCountdownDialog = true;
+            StartCountdown("restart");
+        }
+    }
+
+    // Countdown functions
+    private void StartCountdown(string type)
+    {
+        countdownTimer?.Dispose();
+
+        countdownTimer = new System.Threading.Timer(async _ =>
+        {
+            if (type == "shutdown")
+            {
+                shutdownCountdown--;
+                if (shutdownCountdown <= 0)
+                {
+                    countdownTimer?.Dispose();
+                    showShutdownCountdownDialog = false;
+                }
+            }
+            else if (type == "restart")
+            {
+                restartCountdown--;
+                if (restartCountdown <= 0)
+                {
+                    countdownTimer?.Dispose();
+                    showRestartCountdownDialog = false;
+                }
+            }
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task CancelSystemAction()
+    {
+        await SystemService.CancelShutdownAsync();
+
+        countdownTimer?.Dispose();
+        showShutdownCountdownDialog = false;
+        showRestartCountdownDialog = false;
+        shutdownCountdown = 0;
+        restartCountdown = 0;
+    }
+
+    // Door control - Handshake wird im Core überwacht
+    private async Task ToggleMaintenanceDoor()
+    {
+        // Wartungstür: R189 → Core überwacht R89 und setzt R189 zurück
+        await RobotService.StartDoorHandshakeAsync(189);
+    }
+
+    private async Task OpenLoadDoor()
+    {
+        await RobotService.StopProgramAsync();
+        await RobotService.RunProgramAsync("open_door");
+    }
+
+    private async Task CloseLoadDoor()
+    {
+        await RobotService.StopProgramAsync();
+        await RobotService.RunProgramAsync("close_door");
+    }
+
+    private async Task TogglePaletteDoor(int number)
+    {
+        int requestRegister = number == 1 ? 187 : 188;
+        // Palettentür: R187/R188 → Core überwacht R87/R88 und setzt zurück
+        await RobotService.StartDoorHandshakeAsync(requestRegister);
+    }
+
+    // Robot control
+    private async Task PerformReset()
+    {
+        await RobotService.ResetAsync();
+    }
+
+    private async Task EmergencyStop()
+    {
+        await RobotService.StopProgramAsync();
+    }
+
+    private async Task ClearRobotError()
+    {
+        await RobotService.ResetAsync();
+        hasActiveError = false;
+    }
+
+    public void Dispose()
+    {
+        RobotService.StatusChanged -= OnStatusChanged;
+        T.LanguageChanged -= OnLanguageChanged;
+        countdownTimer?.Dispose();
+    }
+}

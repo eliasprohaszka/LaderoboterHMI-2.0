@@ -1,0 +1,74 @@
+@inherits LayoutComponentBase
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@if (!_isAuthenticated)
+{
+    <div class="min-h-screen fixed inset-0 fanuc-background flex items-center justify-center">
+        <div class="text-center">
+            <div class="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p class="text-gray-600">Laden...</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="min-h-screen fixed inset-0 fanuc-background" style="isolation: isolate;">
+        <!-- Header - Fixed at top -->
+        <div class="fixed top-0 left-0 right-0 z-40">
+            <AppHeader />
+        </div>
+
+        <!-- Main Content Area - z-30 to stay below header (z-40) -->
+        <main class="absolute inset-0 pt-24 pb-14 overflow-y-auto z-30">
+            <div class="max-w-8xl mx-auto p-6 h-full">
+                @Body
+            </div>
+        </main>
+
+        <!-- Footer - Fixed at bottom -->
+        <div class="fixed bottom-0 left-0 right-0 z-40">
+            <AppFooter />
+        </div>
+
+        <!-- Global Components -->
+        <LoadingOverlay />
+        <ErrorDialog />
+    </div>
+}
+
+@code {
+    private bool _isAuthenticated;
+
+    protected override void OnInitialized()
+    {
+        _isAuthenticated = AuthState.IsAuthenticated;
+
+        if (!_isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+        }
+
+        AuthState.AuthStateChanged += OnAuthStateChanged;
+    }
+
+    private void OnAuthStateChanged(object? sender, User? user)
+    {
+        _isAuthenticated = user != null;
+
+        if (!_isAuthenticated)
+        {
+            InvokeAsync(() => Navigation.NavigateTo("/login"));
+        }
+        else
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthState.AuthStateChanged -= OnAuthStateChanged;
+    }
+}

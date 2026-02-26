@@ -1,0 +1,161 @@
+@using Laderoboter.Core.Models
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnCancel">
+        <div class="dialog max-w-2xl" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <Blazicon Svg="Lucide.ArrowBigDownDash" class="h-6 w-6 text-[#004F7C]" />
+                    </div>
+                    <h3 class="dialog-title">@Title</h3>
+                </div>
+                <button class="close-button" @onclick="OnCancel">×</button>
+            </div>
+
+            <div class="dialog-body">
+                <p class="text-sm text-black mb-4">@Message</p>
+
+                <div class="space-y-4">
+                    <label class="text-sm font-medium text-black">@SelectLabel:</label>
+
+                    <!-- Miniature Palette Views -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Palette 1 -->
+                        <div class="border border-white/40 bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                            <h4 class="text-xs font-medium text-black mb-2 text-center">Palette 1</h4>
+                            <div class="grid grid-cols-4 grid-rows-2 gap-1">
+                                @if (Palette1 != null)
+                                {
+                                    @foreach (var workpiece in Palette1.Workpieces)
+                                    {
+                                        <div class="@GetWorkpieceClasses(workpiece)"
+                                             @onclick="() => SelectWorkpiece(workpiece)">
+                                            <div class="absolute inset-1 flex flex-col justify-center items-center text-white">
+                                                <div class="font-medium leading-none">@workpiece.Position</div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Palette 2 -->
+                        <div class="border border-white/40 bg-white/20 backdrop-blur-sm rounded-xl p-3">
+                            <h4 class="text-xs font-medium text-black mb-2 text-center">Palette 2</h4>
+                            <div class="grid grid-cols-4 grid-rows-2 gap-1">
+                                @if (Palette2 != null)
+                                {
+                                    @foreach (var workpiece in Palette2.Workpieces)
+                                    {
+                                        <div class="@GetWorkpieceClasses(workpiece)"
+                                             @onclick="() => SelectWorkpiece(workpiece)">
+                                            <div class="absolute inset-1 flex flex-col justify-center items-center text-white">
+                                                <div class="font-medium leading-none">@workpiece.Position</div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" @onclick="OnCancel">
+                    @CancelText
+                </button>
+                <button class="btn btn-primary" @onclick="OnConfirm" disabled="@(SelectedWorkpiece == null)">
+                    @ConfirmButtonText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = "Werkstück ablegen";
+    [Parameter] public string Message { get; set; } = "Wählen Sie ein Werkstück aus";
+    [Parameter] public string SelectLabel { get; set; } = "Werkstück auswählen";
+    [Parameter] public string CancelText { get; set; } = "Abbrechen";
+    [Parameter] public string ConfirmTextWithWorkpiece { get; set; } = "Ablegen auf Position {id}";
+    [Parameter] public string ConfirmTextGeneral { get; set; } = "Ablegen";
+    [Parameter] public PaletteData? Palette1 { get; set; }
+    [Parameter] public PaletteData? Palette2 { get; set; }
+    [Parameter] public EventCallback<WorkpieceStatus> OnConfirmed { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    private WorkpieceStatus? SelectedWorkpiece { get; set; }
+
+    private string ConfirmButtonText => SelectedWorkpiece != null
+        ? ConfirmTextWithWorkpiece.Replace("{id}", $"P{GetPaletteNumber()}-{SelectedWorkpiece.Position}")
+        : ConfirmTextGeneral;
+
+    private int GetPaletteNumber()
+    {
+        if (SelectedWorkpiece == null) return 0;
+        // Palette 1 Positionen: 1-8, Palette 2 Positionen: 1-8
+        // Wir bestimmen anhand der RegisterAddress
+        if (Palette1?.Workpieces.Contains(SelectedWorkpiece) == true) return 1;
+        if (Palette2?.Workpieces.Contains(SelectedWorkpiece) == true) return 2;
+        return 0;
+    }
+
+    private void SelectWorkpiece(WorkpieceStatus workpiece)
+    {
+        // Nur auswählbar wenn Unused (leer) - dort kann abgelegt werden
+        if (workpiece.State == WorkpieceState.Unused)
+        {
+            SelectedWorkpiece = workpiece;
+        }
+    }
+
+    private string GetWorkpieceClasses(WorkpieceStatus workpiece)
+    {
+        var baseClasses = "mini-workpiece border border-white/20 rounded transition-all duration-200 h-8 text-[10px] relative overflow-hidden";
+
+        var statusClass = workpiece.State switch
+        {
+            WorkpieceState.Processed => "bg-green-600",
+            WorkpieceState.InMachine => "bg-orange-600 animate-pulse",
+            WorkpieceState.AtRobot => "bg-orange-600 animate-pulse",
+            WorkpieceState.Locked => "bg-gray-600 opacity-50 cursor-not-allowed",
+            WorkpieceState.Unprocessed => "bg-[#004F7C]",
+            WorkpieceState.Unused => "bg-gray-400 cursor-pointer",
+            _ => "bg-[#004F7C]"
+        };
+
+        var selectedClass = SelectedWorkpiece?.RegisterAddress == workpiece.RegisterAddress
+            ? "ring-4 ring-[#004F7C] ring-offset-2 scale-110 z-10"
+            : "";
+
+        return $"{baseClasses} {statusClass} {selectedClass}";
+    }
+
+    private async Task OnConfirm()
+    {
+        if (SelectedWorkpiece != null)
+        {
+            await OnConfirmed.InvokeAsync(SelectedWorkpiece);
+        }
+        SelectedWorkpiece = null;
+    }
+
+    private async Task OnCancel()
+    {
+        SelectedWorkpiece = null;
+        await OnCancelled.InvokeAsync();
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Reset selection when dialog is closed
+        if (!IsVisible)
+        {
+            SelectedWorkpiece = null;
+        }
+    }
+}

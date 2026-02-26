@@ -1,0 +1,96 @@
+@inject ITranslationService T
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <Blazicon Svg="Lucide.RotateCcw" class="w-5 h-5 text-blue-600 animate-spin" />
+                    </div>
+                    <h3 class="dialog-title">@Title</h3>
+                </div>
+            </div>
+
+            <div class="dialog-body">
+                <p class="mb-4 text-gray-600">@Description</p>
+
+                <!-- Progress Steps -->
+                <div class="space-y-3">
+                    @foreach (var step in GetProgressSteps())
+                    {
+                        <div class="flex items-center gap-3">
+                            @if (step.Number < Step)
+                            {
+                                <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                                    <Blazicon Svg="Lucide.Check" class="w-4 h-4 text-white" />
+                                </div>
+                                <span class="text-gray-700">@step.Label</span>
+                            }
+                            else if (step.Number == Step)
+                            {
+                                <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                                    <div class="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                                </div>
+                                <span class="text-blue-700 font-medium">@step.Label</span>
+                            }
+                            else
+                            {
+                                <div class="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                                    <span class="text-xs text-gray-500">@step.Number</span>
+                                </div>
+                                <span class="text-gray-400">@step.Label</span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(StatusMessage))
+                {
+                    <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                        @StatusMessage
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public int PaletteId { get; set; }
+    [Parameter] public int Step { get; set; }
+    [Parameter] public string StatusMessage { get; set; } = "";
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public bool IsEndingMode { get; set; }
+
+    private record ProgressStep(int Number, string Label);
+
+    private List<ProgressStep> GetProgressSteps()
+    {
+        if (IsEndingMode)
+        {
+            return new List<ProgressStep>
+            {
+                new(1, T.Translate("changeMode.step.checkNextPickup")),
+                new(2, T.Translate("changeMode.step.resetRegister")),
+                new(3, T.Translate("changeMode.step.setChangeRegister")),
+                new(4, T.Translate("changeMode.step.waitDoorClose")),
+                new(5, T.Translate("changeMode.step.activatePalette"))
+            };
+        }
+        else
+        {
+            return new List<ProgressStep>
+            {
+                new(4, T.Translate("changeMode.step.checkCriticalStatus")),
+                new(5, T.Translate("changeMode.step.checkPickup")),
+                new(6, T.Translate("changeMode.step.setChangeWaitDoor")),
+                new(7, T.Translate("changeMode.step.lockWorkpieces")),
+                new(8, T.Translate("changeMode.step.activateChangeMode"))
+            };
+        }
+    }
+}

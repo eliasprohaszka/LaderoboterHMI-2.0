@@ -1,0 +1,101 @@
+@using Laderoboter.Core.Models
+@inject ITranslationService T
+
+<!-- PaletteCard (exact match to PaletteCard.vue) -->
+<div class="metal-palette border-l-4 border-primary h-full flex flex-col rounded-xl overflow-hidden">
+    <!-- CardHeader -->
+    <div class="p-4">
+        <div class="flex justify-between items-center">
+            <h3 class="text-xl font-semibold">@Title</h3>
+            <div class="flex items-center space-x-2">
+                @if (Mode == PaletteMode.Change)
+                {
+                    <button class="p-3 h-10 w-10 bg-gray-600 text-white font-semibold rounded-lg robot-control-btn flex items-center justify-center"
+                            @onclick="OnResetClick"
+                            title="@T.Translate("palette.resetAll")">
+                        <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4" />
+                    </button>
+                }
+                <button class="p-3 h-10 w-10 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 flex items-center justify-center @(Mode == PaletteMode.Change ? "bg-green-600" : "bg-gray-600")"
+                        @onclick="OnToggleModeClick"
+                        disabled="@IsInProgress"
+                        title="@ModeToggleTitle">
+                    @if (IsInProgress)
+                    {
+                        <span class="spinner w-4 h-4"></span>
+                    }
+                    else if (Mode == PaletteMode.Active)
+                    {
+                        <Blazicon Svg="Lucide.ArrowUpDown" class="w-5 h-5" />
+                    }
+                    else
+                    {
+                        <Blazicon Svg="Lucide.Check" class="w-5 h-5" />
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CardContent -->
+    <div class="p-6 flex-1 relative">
+        <!-- Status Change Processing Indicator -->
+        @if (ShowProcessingIndicator)
+        {
+            <div class="absolute top-2 right-2 z-10 bg-blue-600 text-white text-xs px-2 py-1 rounded-lg flex items-center space-x-1">
+                <span class="spinner w-3 h-3"></span>
+                <span>@T.Translate("palette.changesBeingProcessed")</span>
+            </div>
+        }
+
+        <div class="grid grid-cols-4 grid-rows-2 gap-4 h-full">
+            @foreach (var workpiece in Workpieces)
+            {
+                <WorkpiecePart Workpiece="@workpiece" OnWorkpieceClick="HandleWorkpieceClick" />
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int PaletteId { get; set; }
+    [Parameter] public string Title { get; set; } = "Palette";
+    [Parameter] public List<WorkpieceStatus> Workpieces { get; set; } = new();
+    [Parameter] public PaletteMode Mode { get; set; } = PaletteMode.Active;
+    [Parameter] public bool IsInProgress { get; set; }
+    [Parameter] public int ProgressStep { get; set; }
+    [Parameter] public bool ShowProcessingIndicator { get; set; }
+    [Parameter] public int QueueLength { get; set; }
+
+    [Parameter] public EventCallback OnReset { get; set; }
+    [Parameter] public EventCallback OnToggleMode { get; set; }
+    [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
+
+    private string ModeToggleTitle => IsInProgress
+        ? T.Translate("changeMode.inProgress", ProgressStep)
+        : (Mode == PaletteMode.Active ? T.Translate("changeMode.activate") : T.Translate("changeMode.end"));
+
+    private async Task OnResetClick()
+    {
+        if (OnReset.HasDelegate)
+            await OnReset.InvokeAsync();
+    }
+
+    private async Task OnToggleModeClick()
+    {
+        if (OnToggleMode.HasDelegate)
+            await OnToggleMode.InvokeAsync();
+    }
+
+    private async Task HandleWorkpieceClick(WorkpieceStatus workpiece)
+    {
+        if (OnWorkpieceClick.HasDelegate)
+            await OnWorkpieceClick.InvokeAsync(workpiece);
+    }
+
+    public enum PaletteMode
+    {
+        Active,
+        Change
+    }
+}

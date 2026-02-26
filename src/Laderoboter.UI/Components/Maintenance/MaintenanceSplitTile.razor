@@ -1,0 +1,140 @@
+<!-- MaintenanceSplitTile (exact match to MaintenanceSplitTile.vue) -->
+<div class="maintenance-tile h-full w-full">
+    <div class="flex gap-3 h-full">
+        <button @onclick="HandleClickLeft"
+                disabled="@(DisabledLeft || IsLoadingLeft)"
+                class="w-full h-full font-semibold rounded-xl maintenance-btn disabled:opacity-50 disabled:cursor-not-allowed p-4 flex flex-col items-center justify-center space-y-2 @VariantClassLeft">
+            @if (IsLoadingLeft)
+            {
+                <div class="w-16 h-16 flex items-center justify-center">
+                    <div class="spinner"></div>
+                </div>
+            }
+            else
+            {
+                <Blazicon Svg="@IconLeft" class="w-16 h-16" />
+            }
+            <span class="text-base font-medium">@LabelLeft</span>
+            @if (!string.IsNullOrEmpty(SublabelLeft))
+            {
+                <span class="text-xs opacity-90">@SublabelLeft</span>
+            }
+        </button>
+
+        <button @onclick="HandleClickRight"
+                disabled="@(DisabledRight || IsLoadingRight)"
+                class="w-full h-full font-semibold rounded-xl maintenance-btn disabled:opacity-50 disabled:cursor-not-allowed p-4 flex flex-col items-center justify-center space-y-2 @VariantClassRight">
+            @if (IsLoadingRight)
+            {
+                <div class="w-16 h-16 flex items-center justify-center">
+                    <div class="spinner"></div>
+                </div>
+            }
+            else
+            {
+                <Blazicon Svg="@IconRight" class="w-16 h-16" />
+            }
+            <span class="text-base font-medium">@LabelRight</span>
+            @if (!string.IsNullOrEmpty(SublabelRight))
+            {
+                <span class="text-xs opacity-90">@SublabelRight</span>
+            }
+        </button>
+    </div>
+</div>
+
+<style>
+    .maintenance-tile {
+        min-height: 0;
+    }
+
+    .maintenance-btn {
+        transition: all 0.3s ease;
+        transform: translateY(0);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3),
+            inset 0 1px 3px rgba(255, 255, 255, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .maintenance-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.25) 0%,
+            transparent 40%,
+            rgba(0, 0, 0, 0.15) 100%
+        );
+        pointer-events: none;
+    }
+
+    .maintenance-btn:active:not(:disabled) {
+        transform: translateY(2px) scale(0.98);
+    }
+
+    .spinner {
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+@code {
+    // Left button
+    [Parameter, EditorRequired] public SvgIcon IconLeft { get; set; } = default!;
+    [Parameter, EditorRequired] public string LabelLeft { get; set; } = "";
+    [Parameter] public string? SublabelLeft { get; set; }
+    [Parameter] public bool DisabledLeft { get; set; }
+    [Parameter] public bool IsLoadingLeft { get; set; }
+    [Parameter] public string VariantLeft { get; set; } = "primary";
+    [Parameter] public EventCallback OnClickLeft { get; set; }
+
+    // Right button
+    [Parameter, EditorRequired] public SvgIcon IconRight { get; set; } = default!;
+    [Parameter, EditorRequired] public string LabelRight { get; set; } = "";
+    [Parameter] public string? SublabelRight { get; set; }
+    [Parameter] public bool DisabledRight { get; set; }
+    [Parameter] public bool IsLoadingRight { get; set; }
+    [Parameter] public string VariantRight { get; set; } = "primary";
+    [Parameter] public EventCallback OnClickRight { get; set; }
+
+    private string VariantClassLeft => VariantLeft switch
+    {
+        "secondary" => "bg-gray-600 text-white",
+        "danger" => "bg-red-600 text-white",
+        _ => "bg-primary text-white"
+    };
+
+    private string VariantClassRight => VariantRight switch
+    {
+        "secondary" => "bg-gray-600 text-white",
+        "danger" => "bg-red-600 text-white",
+        _ => "bg-primary text-white"
+    };
+
+    private async Task HandleClickLeft()
+    {
+        if (OnClickLeft.HasDelegate)
+            await OnClickLeft.InvokeAsync();
+    }
+
+    private async Task HandleClickRight()
+    {
+        if (OnClickRight.HasDelegate)
+            await OnClickRight.InvokeAsync();
+    }
+}

@@ -1,0 +1,461 @@
+@inject IRobotService RobotService
+@inject ITranslationService T
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]" @onclick="Close">
+        <div class="bg-white rounded-lg shadow-xl w-[98vw] max-w-[98vw] max-h-[90vh] overflow-hidden flex flex-col"
+             @onclick:stopPropagation="true">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-semibold">@T.Translate("io.title")</h2>
+                        <p class="text-sm text-gray-600">@T.Translate("io.description")</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-2 h-2 rounded-full @(RobotService.IsConnected ? "bg-green-500 animate-pulse" : "bg-red-500")"></div>
+                        <span class="text-sm text-gray-600">@(RobotService.IsConnected ? T.Translate("common.connected") : T.Translate("common.notConnected"))</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="flex-1 overflow-y-auto p-6">
+                <div class="grid grid-cols-2 gap-8">
+                    <!-- Digital Inputs Section -->
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-base text-black border-b pb-2">@T.Translate("io.digitalInputs")</h3>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                            @foreach (var category in digitalInputCategories)
+                            {
+                                <div class="space-y-2">
+                                    <h4 class="font-medium text-xs text-black uppercase tracking-wide px-1">@category.Name</h4>
+                                    <div class="space-y-1.5">
+                                        @foreach (var signal in category.Signals)
+                                        {
+                                            <div class="flex items-center justify-between p-2 rounded border transition-colors @(signal.Value ? "bg-green-50 border-green-400" : "bg-red-50 border-red-400")">
+                                                <div class="flex items-center space-x-2 flex-1 min-w-0">
+                                                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500 shadow-lg shadow-green-500/50" : "bg-red-500 shadow-lg shadow-red-500/50")"></div>
+                                                    <span class="font-mono text-sm font-medium text-gray-900 truncate">@signal.Name</span>
+                                                </div>
+                                                <div class="flex items-center space-x-1">
+                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(signal.Value ? "bg-green-600 text-white" : "bg-gray-400 text-white")"
+                                                            disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
+                                                            @onclick="() => ToggleInput(signal, true)">
+                                                        ON
+                                                    </button>
+                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-400 text-white")"
+                                                            disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
+                                                            @onclick="() => ToggleInput(signal, false)">
+                                                        OFF
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Digital Outputs Section -->
+                    <div class="space-y-3">
+                        <h3 class="font-semibold text-base text-black border-b pb-2">@T.Translate("io.digitalOutputs")</h3>
+                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                            @foreach (var category in digitalOutputCategories)
+                            {
+                                <div class="space-y-2">
+                                    <h4 class="font-medium text-xs text-black uppercase tracking-wide px-1">@category.Name</h4>
+                                    <div class="space-y-1.5">
+                                        @foreach (var signal in category.Signals)
+                                        {
+                                            <div class="flex items-center justify-between p-2 rounded border transition-colors @(signal.Value ? "bg-green-50 border-green-400" : "bg-red-50 border-red-400")">
+                                                <div class="flex items-center space-x-2 flex-1 min-w-0">
+                                                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500 shadow-lg shadow-green-500/50" : "bg-red-500 shadow-lg shadow-red-500/50")"></div>
+                                                    <span class="font-mono text-sm font-medium text-gray-900 truncate">@signal.Name</span>
+                                                </div>
+                                                <div class="flex items-center space-x-1">
+                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(signal.Value ? "bg-green-600 text-white" : "bg-gray-400 text-white")"
+                                                            disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
+                                                            @onclick="() => ToggleOutput(signal, true)">
+                                                        ON
+                                                    </button>
+                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-400 text-white")"
+                                                            disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
+                                                            @onclick="() => ToggleOutput(signal, false)">
+                                                        OFF
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 border-t flex justify-end">
+                <button class="px-4 py-2 bg-gray-600 text-white rounded-lg" @onclick="Close">
+                    @T.Translate("common.close")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private List<IoCategory> digitalInputCategories = new();
+    private List<IoCategory> digitalOutputCategories = new();
+    private HashSet<int> loadingSignals = new();
+    private System.Threading.Timer? _refreshTimer;
+    private bool _isRefreshing = false;
+
+    // Stabilisierung: Speichere bestätigte Werte
+    private Dictionary<int, bool> _confirmedInputValues = new();
+    private Dictionary<int, bool> _confirmedOutputValues = new();
+    private Dictionary<int, (bool Value, int Count)> _pendingInputChanges = new();
+    private Dictionary<int, (bool Value, int Count)> _pendingOutputChanges = new();
+    private const int CONFIRMATIONS_REQUIRED = 3;
+
+    // Lock für manuell gesetzte Werte
+    private Dictionary<int, DateTime> _lockedInputAddresses = new();
+    private Dictionary<int, DateTime> _lockedOutputAddresses = new();
+    private static readonly TimeSpan LOCK_DURATION = TimeSpan.FromSeconds(1);
+
+    // Cache für Batch-Abfrage Adressen
+    private int[] _inputAddresses = Array.Empty<int>();
+    private int[] _outputAddresses = Array.Empty<int>();
+
+    protected override void OnInitialized()
+    {
+        InitializeCategories();
+        CacheAddresses();
+    }
+
+    private void CacheAddresses()
+    {
+        _inputAddresses = digitalInputCategories
+            .SelectMany(c => c.Signals)
+            .Select(s => s.Address)
+            .ToArray();
+
+        _outputAddresses = digitalOutputCategories
+            .SelectMany(c => c.Signals)
+            .Select(s => s.Address)
+            .ToArray();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsVisible)
+        {
+            StartRefresh();
+        }
+        else
+        {
+            StopRefresh();
+        }
+    }
+
+    private void InitializeCategories()
+    {
+        digitalInputCategories = new List<IoCategory>
+        {
+            new(T.Translate("io.doors"), new List<IoSignal>
+            {
+                new(1009, "DOOR_MAINT_1_OPE"),
+                new(1010, "DOOR_MAINT_2_OPE"),
+                new(1011, "DOOR_PAL_1_OPEN"),
+                new(1018, "DOOR_PAL_2_OPEN"),
+                new(1016, "DOOR_LOAD_OPEN"),
+            }),
+            new(T.Translate("io.grinder"), new List<IoSignal>
+            {
+                new(1035, "FS_LOADING_PO"),
+                new(1036, "FS_BUSY"),
+                new(1037, "FS_READY_TO_LOAD"),
+                new(1038, "FS_NO_ERROR"),
+                new(1040, "FS_ALIVE"),
+            }),
+            new(T.Translate("io.doorSafety"), new List<IoSignal>
+            {
+                new(1060, "DOOR_MAINT_1_SAF"),
+                new(1064, "DOOR_MAINT_2_SAF"),
+                new(1061, "DOOR_LOAD_SAFE"),
+                new(1062, "DOOR_PAL_1_SAFE"),
+                new(1063, "DOOR_PAL_2_SAFE"),
+            }),
+            new(T.Translate("io.safetySystem"), new List<IoSignal>
+            {
+                new(1049, "PNEU_PRES_OK"),
+                new(1057, "NO_NOT_AUS_FS"),
+                new(1058, "NO_NOT_AUS_RB"),
+                new(1059, "NO_NOT_AUS_LOAD"),
+            }),
+            new(T.Translate("io.palettes"), new List<IoSignal>
+            {
+                new(1041, "PAL_1_1_PRESENT"),
+                new(1042, "PAL_1_2_PRESENT"),
+                new(1043, "PAL_1_3_PRESENT"),
+                new(1044, "PAL_1_4_PRESENT"),
+                new(1045, "PAL_2_1_PRESENT"),
+                new(1046, "PAL_2_2_PRESENT"),
+                new(1047, "PAL_2_3_PRESENT"),
+                new(1048, "PAL_2_4_PRESENT"),
+            }),
+            new(T.Translate("io.chuck"), new List<IoSignal>
+            {
+                new(1033, "CHUCK_CLOSED"),
+                new(1034, "CHUCK_OPEN"),
+                new(1039, "CHUCK_CLEAN"),
+            }),
+        };
+
+        digitalOutputCategories = new List<IoCategory>
+        {
+            new(T.Translate("io.system"), new List<IoSignal>
+            {
+                new(1021, "NO_ERROR"),
+                new(1023, "RESERVED"),
+                new(1024, "LOADER_ALIVE"),
+            }),
+            new(T.Translate("io.loadControl"), new List<IoSignal>
+            {
+                new(1019, "MOVE_TO_LOADING"),
+                new(1020, "STOP_LOADING"),
+                new(1022, "NOTHING_TO_LOAD"),
+            }),
+            new(T.Translate("io.doorControl"), new List<IoSignal>
+            {
+                new(1010, "OPEN_DOOR_LOAD"),
+                new(1011, "CLOSE_DOOR_LOAD"),
+                new(1012, "UNLOCK_DOOR_PAL"),
+                new(1013, "UNLOCK_DOOR_LOAD"),
+                new(1014, "UNLOCK_DOOR_MAINT"),
+                new(1015, "UNLOCK_DOOR_PAL_2"),
+            }),
+            new(T.Translate("io.chuck"), new List<IoSignal>
+            {
+                new(1017, "CLOSE_CHUCK"),
+                new(1018, "OPEN_CHUCK"),
+            }),
+        };
+    }
+
+    private void StartRefresh()
+    {
+        _refreshTimer?.Dispose();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            if (_isRefreshing) return;
+            _isRefreshing = true;
+
+            try
+            {
+                await RefreshSignals();
+                await InvokeAsync(StateHasChanged);
+            }
+            finally
+            {
+                _isRefreshing = false;
+            }
+        }, null, TimeSpan.Zero, TimeSpan.FromMilliseconds(500));
+    }
+
+    private void StopRefresh()
+    {
+        _refreshTimer?.Dispose();
+        _refreshTimer = null;
+    }
+
+    private async Task RefreshSignals()
+    {
+        if (!RobotService.IsConnected) return;
+
+        var inputValues = await RobotService.ReadDigitalInputsBatchAsync(_inputAddresses);
+        if (inputValues != null)
+        {
+            foreach (var category in digitalInputCategories)
+            {
+                foreach (var signal in category.Signals)
+                {
+                    if (inputValues.TryGetValue(signal.Address, out var newValue))
+                    {
+                        var stableValue = GetStableValue(
+                            signal.Address, newValue,
+                            _confirmedInputValues, _pendingInputChanges, _lockedInputAddresses);
+                        signal.Value = stableValue;
+                    }
+                }
+            }
+        }
+
+        var outputValues = await RobotService.ReadDigitalOutputsBatchAsync(_outputAddresses);
+        if (outputValues != null)
+        {
+            foreach (var category in digitalOutputCategories)
+            {
+                foreach (var signal in category.Signals)
+                {
+                    if (outputValues.TryGetValue(signal.Address, out var newValue))
+                    {
+                        var stableValue = GetStableValue(
+                            signal.Address, newValue,
+                            _confirmedOutputValues, _pendingOutputChanges, _lockedOutputAddresses);
+                        signal.Value = stableValue;
+                    }
+                }
+            }
+        }
+    }
+
+    private bool GetStableValue(
+        int address,
+        bool readValue,
+        Dictionary<int, bool> confirmed,
+        Dictionary<int, (bool Value, int Count)> pending,
+        Dictionary<int, DateTime> locked)
+    {
+        if (locked.TryGetValue(address, out var lockTime))
+        {
+            if (DateTime.UtcNow - lockTime < LOCK_DURATION)
+            {
+                return confirmed.GetValueOrDefault(address, readValue);
+            }
+            else
+            {
+                locked.Remove(address);
+            }
+        }
+
+        if (!confirmed.ContainsKey(address))
+        {
+            confirmed[address] = readValue;
+            pending.Remove(address);
+            return readValue;
+        }
+
+        bool currentConfirmed = confirmed[address];
+
+        if (readValue == currentConfirmed)
+        {
+            pending.Remove(address);
+            return currentConfirmed;
+        }
+
+        if (pending.TryGetValue(address, out var pendingChange))
+        {
+            if (pendingChange.Value == readValue)
+            {
+                int newCount = pendingChange.Count + 1;
+                if (newCount >= CONFIRMATIONS_REQUIRED)
+                {
+                    confirmed[address] = readValue;
+                    pending.Remove(address);
+                    return readValue;
+                }
+                pending[address] = (readValue, newCount);
+            }
+            else
+            {
+                pending[address] = (readValue, 1);
+            }
+        }
+        else
+        {
+            pending[address] = (readValue, 1);
+        }
+
+        return currentConfirmed;
+    }
+
+    private async Task ToggleInput(IoSignal signal, bool newValue)
+    {
+        loadingSignals.Add(signal.Address);
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var success = await RobotService.SimulateDigitalInputAsync(signal.Address, newValue);
+            if (success)
+            {
+                _lockedInputAddresses[signal.Address] = DateTime.UtcNow;
+                _confirmedInputValues[signal.Address] = newValue;
+                _pendingInputChanges.Remove(signal.Address);
+                signal.Value = newValue;
+            }
+        }
+        finally
+        {
+            loadingSignals.Remove(signal.Address);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task ToggleOutput(IoSignal signal, bool newValue)
+    {
+        loadingSignals.Add(signal.Address);
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var success = await RobotService.WriteDigitalOutputAsync(signal.Address, newValue);
+            if (success)
+            {
+                _lockedOutputAddresses[signal.Address] = DateTime.UtcNow;
+                _confirmedOutputValues[signal.Address] = newValue;
+                _pendingOutputChanges.Remove(signal.Address);
+                signal.Value = newValue;
+            }
+        }
+        finally
+        {
+            loadingSignals.Remove(signal.Address);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+
+    public class IoCategory
+    {
+        public string Name { get; set; }
+        public List<IoSignal> Signals { get; set; }
+
+        public IoCategory(string name, List<IoSignal> signals)
+        {
+            Name = name;
+            Signals = signals;
+        }
+    }
+
+    public class IoSignal
+    {
+        public int Address { get; set; }
+        public string Name { get; set; }
+        public bool Value { get; set; }
+
+        public IoSignal(int address, string name)
+        {
+            Address = address;
+            Name = name;
+            Value = false;
+        }
+    }
+}

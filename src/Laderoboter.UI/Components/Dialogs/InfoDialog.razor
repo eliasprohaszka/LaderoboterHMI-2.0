@@ -1,0 +1,41 @@
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnCloseClick">
+        <div class="dialog max-w-md" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <Blazicon Svg="@Icon" class="@IconClass" />
+                    </div>
+                    <h3 class="dialog-title">@Title</h3>
+                </div>
+            </div>
+
+            <div class="dialog-body">
+                <p class="text-sm text-black">@Message</p>
+            </div>
+
+            <div class="dialog-footer justify-center">
+                <button class="btn @ButtonClass" @onclick="OnCloseClick">
+                    @ButtonText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string Title { get; set; } = "Information";
+    [Parameter] public string Message { get; set; } = "";
+    [Parameter] public SvgIcon Icon { get; set; } = Lucide.Info;
+    [Parameter] public string IconClass { get; set; } = "h-6 w-6 text-[#004F7C]";
+    [Parameter] public string ButtonText { get; set; } = "OK";
+    [Parameter] public string ButtonClass { get; set; } = "btn-primary";
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private async Task OnCloseClick()
+    {
+        await OnClose.InvokeAsync();
+    }
+}

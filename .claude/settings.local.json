@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(dir \"C:\\\\Users\\\\elias.prohaszka\\\\Documents\\\\dev\\\\LaderoboterHMI\" /s /b)",
+      "Bash(dotnet ef migrations add:*)",
+      "Bash(dotnet add:*)",
+      "Bash(dir \"%LocalAppData%\\\\Laderoboter\")",
+      "Bash(cmd /c \"dir %LocalAppData%\\\\Laderoboter\")",
+      "Bash(powershell:*)",
+      "Bash(Remove-Item -Path \"$env:LOCALAPPDATA\\\\Laderoboter\\\\laderoboter.db\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(Write-Host \"Datenbank gelöscht: $env:LOCALAPPDATA\\\\Laderoboter\\\\laderoboter.db\")",
+      "Bash(copy \"C:\\\\Users\\\\elias.prohaszka\\\\Documents\\\\dev\\\\LaderoboterHMI\\\\frontend\\\\assets\\\\img\\\\GH-Kontur.svg\" \"c:\\\\Users\\\\elias.prohaszka\\\\Documents\\\\dev\\\\BlazorLaderoboter\\\\src\\\\Laderoboter.Desktop\\\\wwwroot\\\\img\"\")",
+      "Bash(cmd /c copy:*)",
+      "Bash(del \"%LocalAppData%\\\\Laderoboter\\\\laderoboter.db\")",
+      "Bash(dir \"%LocalAppData%\\\\Laderoboter\"\" 2>nul || echo \"Folder does not exist \")",
+      "Bash(cmd /c \"dir %LocalAppData%\\\\Laderoboter\\\\ 2>nul || echo Folder does not exist\")",
+      "Bash(cmd /c:*)"
+    ]
+  }
+}

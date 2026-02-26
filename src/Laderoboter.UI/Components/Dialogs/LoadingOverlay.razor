@@ -1,0 +1,17 @@
+@if (IsVisible)
+{
+    <div class="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            @if (!string.IsNullOrEmpty(Message))
+            {
+                <p class="loading-message">@Message</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string? Message { get; set; }
+}

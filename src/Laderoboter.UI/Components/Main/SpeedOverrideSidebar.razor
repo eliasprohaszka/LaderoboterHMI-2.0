@@ -1,0 +1,223 @@
+@using Laderoboter.Core.Services
+@inject IRobotService RobotService
+@inject ITranslationService T
+@implements IDisposable
+
+<!-- SpeedOverrideSidebar (exact match to SpeedOverrideSidebar.vue) -->
+<div class="speed-sidebar h-full flex flex-col metal-palette rounded-lg shadow-lg transition-all duration-300 overflow-hidden cursor-pointer @(IsCollapsed ? "w-12" : "w-64")"
+     @onclick="HandleSidebarClick">
+
+    @if (IsCollapsed)
+    {
+        <!-- Collapsed State - Vertical Text -->
+        <div class="flex-1 flex items-center justify-center">
+            <div class="vertical-text text-gray-900 font-semibold text-sm drop-shadow-sm">
+                @T.Translate("speed.title")
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Expanded State - Header with Collapse Button -->
+        <div class="flex items-center justify-between p-3 border-b border-black/20 flex-shrink-0">
+            <div class="flex items-center space-x-2">
+                <Blazicon Svg="Lucide.Gauge" class="w-5 h-5 text-primary drop-shadow-sm" />
+                <h3 class="font-semibold text-sm text-gray-900 drop-shadow-sm">
+                    @T.Translate("speed.title")
+                </h3>
+            </div>
+            <button class="p-1.5 rounded-lg transition-all text-gray-900"
+                    @onclick="ToggleCollapse"
+                    @onclick:stopPropagation="true"
+                    title="@T.Translate("speed.collapse")">
+                <Blazicon Svg="Lucide.ChevronRight" class="w-4 h-4" />
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Info Text -->
+            <div class="px-3 py-2 text-xs text-gray-800 bg-black/5 border-b border-black/10 flex-shrink-0">
+                @T.Translate("speed.description")
+            </div>
+
+            <!-- Scrollable Content Area -->
+            <div class="flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar flex flex-col justify-center">
+                <div class="w-full flex flex-col items-center">
+                    <!-- Value Display -->
+                    <div class="mb-2 text-center">
+                        <div class="text-3xl font-bold text-gray-700 tabular-nums">
+                            @SpeedValue<span class="text-xl">%</span>
+                        </div>
+                    </div>
+
+                    <!-- Control Slider -->
+                    <div class="mb-3 w-full px-4">
+                        <input type="range"
+                               class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary"
+                               min="0"
+                               max="100"
+                               step="1"
+                               value="@SpeedValue"
+                               disabled="@(!IsConnected || IsUpdating)"
+                               @oninput="OnSpeedInput" />
+                    </div>
+
+                    <!-- Quick Preset Buttons -->
+                    <div class="grid grid-cols-4 gap-1.5 w-full max-w-[220px]">
+                        @foreach (var preset in Presets)
+                        {
+                            <button class="px-2 py-1.5 text-xs font-medium rounded-lg transition-all robot-control-btn @(SpeedValue == preset ? "bg-gray-700 text-white" : "bg-white/20 text-gray-700")"
+                                    @onclick="() => SetPreset(preset)"
+                                    @onclick:stopPropagation="true"
+                                    disabled="@(!IsConnected || IsUpdating)">
+                                @preset%
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+<style>
+    .vertical-text {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        white-space: nowrap;
+        letter-spacing: 0.05em;
+    }
+
+    .custom-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(0, 0, 0, 0.3);
+        border-radius: 3px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(0, 0, 0, 0.4);
+    }
+</style>
+
+@code {
+    private bool IsCollapsed = true;
+    private int SpeedValue = 50;
+    private bool IsUpdating = false;
+    private int[] Presets = { 25, 50, 75, 100 };
+
+    private bool IsConnected => RobotService.IsConnected;
+
+    private System.Threading.Timer? _refreshTimer;
+
+    protected override void OnInitialized()
+    {
+        RobotService.StatusChanged += OnStatusChanged;
+        T.LanguageChanged += OnLanguageChanged;
+
+        if (IsConnected)
+        {
+            SpeedValue = RobotService.Status.SpeedOverride > 0 ? RobotService.Status.SpeedOverride : 50;
+            StartAutoRefresh();
+        }
+    }
+
+    private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)
+    {
+        if (!IsUpdating && e.Status.SpeedOverride > 0)
+        {
+            SpeedValue = e.Status.SpeedOverride;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleSidebarClick()
+    {
+        if (IsCollapsed)
+        {
+            ToggleCollapse();
+        }
+    }
+
+    private void ToggleCollapse()
+    {
+        IsCollapsed = !IsCollapsed;
+    }
+
+    private async Task SetPreset(int value)
+    {
+        SpeedValue = value;
+        await ApplySpeed();
+    }
+
+    private async Task OnSpeedInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newValue))
+        {
+            SpeedValue = newValue;
+            await ApplySpeed();
+        }
+    }
+
+    private async Task ApplySpeed()
+    {
+        if (!IsConnected || IsUpdating) return;
+
+        IsUpdating = true;
+
+        try
+        {
+            await RobotService.SetSpeedOverrideAsync(SpeedValue);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Speed Override] Error applying speed: {ex.Message}");
+        }
+        finally
+        {
+            IsUpdating = false;
+        }
+    }
+
+    private void StartAutoRefresh()
+    {
+        _refreshTimer?.Dispose();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            if (!IsUpdating && IsConnected)
+            {
+                var currentSpeed = RobotService.Status.SpeedOverride;
+                if (currentSpeed > 0 && currentSpeed != SpeedValue)
+                {
+                    SpeedValue = currentSpeed;
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    public void Dispose()
+    {
+        RobotService.StatusChanged -= OnStatusChanged;
+        T.LanguageChanged -= OnLanguageChanged;
+        _refreshTimer?.Dispose();
+    }
+}

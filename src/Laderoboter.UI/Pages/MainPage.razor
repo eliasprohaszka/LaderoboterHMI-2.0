@@ -1,0 +1,851 @@
+@page "/"
+@using Laderoboter.Core.Services
+@using Laderoboter.Core.Models
+@using static Laderoboter.UI.Components.Main.PaletteCard
+@inject IRobotService RobotService
+@inject IRobotMonitor RobotMonitor
+@inject ISettingsService Settings
+@inject ITranslationService T
+@implements IDisposable
+
+<div class="h-full">
+    @if (!RobotService.IsConnected)
+    {
+        <!-- Connection Dialog -->
+        <div class="fixed inset-0 flex items-center justify-center z-50">
+            <div class="metal-palette rounded-lg shadow-lg p-8 max-w-md w-full mx-4">
+                <div class="flex items-center space-x-3 mb-4">
+                    <div class="p-2 bg-gray-100 rounded-lg">
+                        <Blazicon Svg="Lucide.Bot" class="w-6 h-6 text-gray-600" />
+                    </div>
+                    <h2 class="text-xl font-semibold text-gray-900">@T.Translate("connection.title")</h2>
+                </div>
+                <p class="text-sm text-gray-600 mb-6">@T.Translate("connection.description")</p>
+
+                <div class="space-y-4">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" @bind="isOfflineMode" class="w-4 h-4 rounded border-gray-300" />
+                        <span class="text-sm text-gray-700">@T.Translate("connection.offlineMode")</span>
+                    </label>
+
+                    @if (isOfflineMode)
+                    {
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">@T.Translate("connection.roboGuidePath")</label>
+                            <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" @bind="roboGuidePath" placeholder="@T.Translate("connection.roboGuidePathPlaceholder")" />
+                        </div>
+                    }
+                    else
+                    {
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">@T.Translate("connection.ipAddress")</label>
+                            <input type="text" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary" @bind="ipAddress" placeholder="@T.Translate("connection.ipAddressPlaceholder")" />
+                        </div>
+                    }
+
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" @bind="autoConnect" class="w-4 h-4 rounded border-gray-300" />
+                        <span class="text-sm text-gray-700">@T.Translate("connection.autoConnect")</span>
+                    </label>
+
+                    <button class="w-full px-6 py-3 bg-primary text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                            @onclick="Connect"
+                            disabled="@isConnecting">
+                        @if (isConnecting)
+                        {
+                            <span class="spinner w-5 h-5 mr-2"></span>
+                            <span>@T.Translate("connection.connecting")</span>
+                        }
+                        else
+                        {
+                            <Blazicon Svg="Lucide.Plug" class="w-5 h-5 mr-2" />
+                            <span>@T.Translate("connection.connect")</span>
+                        }
+                    </button>
+
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">@errorMessage</div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Dashboard Content (exact match to main.vue) -->
+        <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
+            <!-- Header -->
+            <PaletteHeader Title="@T.Translate("palette.overview")" Description="@T.Translate("palette.overviewDescription")" />
+
+            <!-- Content -->
+            <div class="px-6 flex-1 flex flex-col min-h-0">
+                <!-- Steuerungsbuttons horizontal oben -->
+                <div class="mb-6 flex-shrink-0">
+                    <ProgramControl />
+                </div>
+
+                <!-- Paletten und Sidebar - nutzen verfügbaren Platz -->
+                <div class="flex-1 flex pb-6 gap-4 min-h-0">
+                    <!-- Paletten Bereich (mitte) -->
+                    <div class="flex-1 min-h-0">
+                        <PaletteSection
+                            Palette1Workpieces="@Palette1Workpieces"
+                            Palette1Mode="@Palette1Mode"
+                            Palette2Workpieces="@Palette2Workpieces"
+                            Palette2Mode="@Palette2Mode"
+                            OnPalette1Reset="ResetPalette1"
+                            OnPalette2Reset="ResetPalette2"
+                            OnPalette1ToggleMode="TogglePalette1Mode"
+                            OnPalette2ToggleMode="TogglePalette2Mode"
+                            OnWorkpieceClick="OnWorkpieceClick" />
+                    </div>
+
+                    <!-- Speed Override Sidebar (rechts) -->
+                    <SpeedOverrideSidebar />
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@* Context Menu für Werkstück *@
+<WorkpieceContextMenu IsVisible="@showWorkpieceContextMenu"
+                      Workpiece="@selectedWorkpiece"
+                      OnClose="CloseContextMenu"
+                      OnStatusChanged="OnWorkpieceStatusChanged" />
+
+@* Change Mode Dialoge *@
+<ChangeModeConfirmDialog IsVisible="@showChangeModeConfirmDialog"
+                         PaletteId="@selectedPaletteForModeChange"
+                         OnConfirmed="ConfirmChangeMode"
+                         OnCancelled="CancelModeChange" />
+
+<EndChangeModeDialog IsVisible="@showEndChangeModeDialog"
+                     PaletteId="@selectedPaletteForModeChange"
+                     OnConfirmed="ConfirmEndChangeMode"
+                     OnCancelled="CancelModeChange" />
+
+<ChangeModeProgressDialog IsVisible="@wechselmodusInProgress"
+                          PaletteId="@selectedPaletteForModeChange"
+                          Step="@wechselmodusStep"
+                          StatusMessage="@wechselmodusStatusMessage"
+                          Title="@changeModeProgressTitle"
+                          Description="@changeModeProgressDescription"
+                          IsEndingMode="@isEndingChangeMode" />
+
+<ChangeModeErrorDialog IsVisible="@showWechselmodusErrorDialog"
+                       ErrorMessage="@wechselmodusError"
+                       OnClosed="CloseErrorDialog" />
+
+@code {
+    private string ipAddress = "";
+    private string roboGuidePath = "";
+    private bool isOfflineMode = false;
+    private bool autoConnect = false;
+    private bool isConnecting = false;
+    private string? errorMessage;
+
+    private bool showWorkpieceContextMenu = false;
+    private WorkpieceStatus? selectedWorkpiece;
+
+    // Palette data
+    private List<WorkpieceStatus> Palette1Workpieces = new();
+    private List<WorkpieceStatus> Palette2Workpieces = new();
+    private PaletteMode Palette1Mode = PaletteMode.Active;
+    private PaletteMode Palette2Mode = PaletteMode.Active;
+
+    // Wechselmodus state
+    private bool showChangeModeConfirmDialog = false;
+    private bool showEndChangeModeDialog = false;
+    private bool showWechselmodusErrorDialog = false;
+    private bool wechselmodusInProgress = false;
+    private bool isEndingChangeMode = false;
+    private int selectedPaletteForModeChange = 0;
+    private int wechselmodusStep = 0;
+    private string wechselmodusStatusMessage = "";
+    private string wechselmodusError = "";
+
+    private string changeModeProgressTitle => isEndingChangeMode
+        ? T.Translate("changeMode.end")
+        : T.Translate("changeMode.activate");
+    private string changeModeProgressDescription => isEndingChangeMode
+        ? T.Translate("changeMode.endingFor", selectedPaletteForModeChange)
+        : T.Translate("changeMode.activatingFor", selectedPaletteForModeChange);
+
+    // Subscriptions für RobotMonitor
+    private IDisposable? _palette1Subscription;
+    private IDisposable? _palette2Subscription;
+    private bool _eventHandlerRegistered = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ipAddress = await Settings.GetAsync("robot.connection.ip") ?? "192.168.1.1";
+        roboGuidePath = await Settings.GetAsync("robot.roboguide_path") ?? "";
+        isOfflineMode = await Settings.GetAsync<bool>("robot.offline");
+        autoConnect = await Settings.GetAsync<bool>("robot.connection.autoConnect");
+
+        // Guard gegen mehrfache Event-Handler Registrierung
+        if (!_eventHandlerRegistered)
+        {
+            RobotService.StatusChanged += OnStatusChanged;
+            T.LanguageChanged += OnLanguageChanged;
+            _eventHandlerRegistered = true;
+        }
+
+        // Subscribe zu RobotMonitor Palette Changes (alte Subscriptions werden in Dispose aufgeräumt)
+        _palette1Subscription?.Dispose();
+        _palette2Subscription?.Dispose();
+        _palette1Subscription = RobotMonitor.Palette1Changes.Subscribe(OnPalette1Changed);
+        _palette2Subscription = RobotMonitor.Palette2Changes.Subscribe(OnPalette2Changed);
+
+        // Initialize palette data
+        InitializePaletteData();
+
+        // Start monitoring if already connected but not monitoring
+        if (RobotService.IsConnected)
+        {
+            if (!RobotMonitor.IsMonitoring)
+            {
+                RobotMonitor.Start();
+            }
+            // Always load current data when returning to this page
+            await LoadPaletteDataFromRegisters();
+        }
+        // Auto-connect if enabled and not already connected
+        else if (autoConnect && !string.IsNullOrEmpty(ipAddress))
+        {
+            await Connect();
+        }
+    }
+
+    private void InitializePaletteData()
+    {
+        // Initialize with 8 workpieces per palette (default: Unused/Empty)
+        // Register-Adressen sind relativ zum Basis-Register (50 oder 150 je nach Programm-Status)
+        Palette1Workpieces = Enumerable.Range(1, 8).Select(i => new WorkpieceStatus
+        {
+            Position = i,
+            State = WorkpieceState.Unused,
+            RegisterAddress = 50 + (i - 1),  // R[50-57] wenn Programm läuft, R[150-157] wenn nicht
+            SequenceNumber = 0
+        }).ToList();
+
+        Palette2Workpieces = Enumerable.Range(1, 8).Select(i => new WorkpieceStatus
+        {
+            Position = i,
+            State = WorkpieceState.Unused,
+            RegisterAddress = 58 + (i - 1),  // R[58-65] wenn Programm läuft, R[158-165] wenn nicht
+            SequenceNumber = 0
+        }).ToList();
+    }
+
+    private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPalette1Changed(PaletteSnapshot snapshot)
+    {
+        // Update Palette 1 from Monitor snapshot
+        for (int i = 0; i < snapshot.States.Count && i < Palette1Workpieces.Count; i++)
+        {
+            Palette1Workpieces[i].State = snapshot.States[i];
+            if (i < snapshot.SequenceNumbers.Count)
+            {
+                Palette1Workpieces[i].SequenceNumber = snapshot.SequenceNumbers[i];
+            }
+        }
+
+        // NICHT automatisch Mode aus Snapshot übernehmen - Mode wird nur durch User-Aktion geändert
+        // Palette1Mode = snapshot.IsActive ? PaletteMode.Active : PaletteMode.Change;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnPalette2Changed(PaletteSnapshot snapshot)
+    {
+        // Update Palette 2 from Monitor snapshot
+        for (int i = 0; i < snapshot.States.Count && i < Palette2Workpieces.Count; i++)
+        {
+            Palette2Workpieces[i].State = snapshot.States[i];
+            if (i < snapshot.SequenceNumbers.Count)
+            {
+                Palette2Workpieces[i].SequenceNumber = snapshot.SequenceNumbers[i];
+            }
+        }
+
+        // NICHT automatisch Mode aus Snapshot übernehmen - Mode wird nur durch User-Aktion geändert
+        // Palette2Mode = snapshot.IsActive ? PaletteMode.Active : PaletteMode.Change;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task Connect()
+    {
+        string connectionPath = isOfflineMode ? roboGuidePath : ipAddress;
+
+        if (string.IsNullOrWhiteSpace(connectionPath)) return;
+
+        isConnecting = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        var timeout = await Settings.GetAsync<int?>("robot.connection.timeout") ?? 2000;
+        var success = await RobotService.ConnectAsync(connectionPath, timeout);
+
+        if (success)
+        {
+            await Settings.SetAsync("robot.offline", isOfflineMode);
+            if (isOfflineMode)
+            {
+                await Settings.SetAsync("robot.roboguide_path", roboGuidePath);
+            }
+            else
+            {
+                await Settings.SetAsync("robot.connection.ip", ipAddress);
+            }
+            await Settings.SetAsync("robot.connection.autoConnect", autoConnect);
+
+            // Start monitoring - dies wird die Palette-Daten aus den Registern laden
+            RobotMonitor.Start();
+
+            // Initial load: Read registers directly once
+            await LoadPaletteDataFromRegisters();
+        }
+        else
+        {
+            errorMessage = RobotService.Status.ErrorMessage ?? T.Translate("connection.connectionFailed");
+        }
+
+        isConnecting = false;
+    }
+
+    private async Task LoadPaletteDataFromRegisters()
+    {
+        if (!RobotService.IsConnected) return;
+
+        // Register-Layout:
+        // - R[50-57]:   Palette 1 (Position 1-8) wenn Programm läuft
+        // - R[58-65]:   Palette 2 (Position 1-8) wenn Programm läuft
+        // - R[150-157]: Palette 1 (Position 1-8) wenn Programm NICHT läuft
+        // - R[158-165]: Palette 2 (Position 1-8) wenn Programm NICHT läuft
+
+        bool programRunning = RobotService.Status.IsRunning;
+
+        // Wähle den richtigen Register-Bereich basierend auf Programm-Status
+        int baseAddress = programRunning ? 50 : 150;
+
+        // Lese alle 16 Palette-Werte in einem Batch (Palette 1 + Palette 2)
+        var paletteValues = await RobotService.ReadRegistersAsync(baseAddress, 16);
+        if (paletteValues != null)
+        {
+            // Erste 8 Werte: Palette 1
+            for (int i = 0; i < 8 && i < Palette1Workpieces.Count; i++)
+            {
+                Palette1Workpieces[i].State = (WorkpieceState)paletteValues[i];
+            }
+            // Nächste 8 Werte: Palette 2
+            for (int i = 0; i < 8 && i < Palette2Workpieces.Count; i++)
+            {
+                Palette2Workpieces[i].State = (WorkpieceState)paletteValues[8 + i];
+            }
+        }
+
+        // Lese Sequence-Register (101-116) in einem Batch
+        var sequenceValues = await RobotService.ReadRegistersAsync(101, 16);
+        if (sequenceValues != null)
+        {
+            // Erste 8 für Palette 1
+            for (int i = 0; i < 8 && i < Palette1Workpieces.Count; i++)
+            {
+                Palette1Workpieces[i].SequenceNumber = sequenceValues[i];
+            }
+            // Nächste 8 für Palette 2
+            for (int i = 0; i < 8 && i < Palette2Workpieces.Count; i++)
+            {
+                Palette2Workpieces[i].SequenceNumber = sequenceValues[8 + i];
+            }
+        }
+
+        // Mode wird NICHT aus Registern gelesen - ist immer Active beim Start
+        // Der Wechselmodus wird nur durch explizite User-Aktion aktiviert
+        Palette1Mode = PaletteMode.Active;
+        Palette2Mode = PaletteMode.Active;
+
+        StateHasChanged();
+    }
+
+    private void TogglePalette1Mode()
+    {
+        TogglePaletteMode(1);
+    }
+
+    private void TogglePalette2Mode()
+    {
+        TogglePaletteMode(2);
+    }
+
+    private void TogglePaletteMode(int paletteNumber)
+    {
+        selectedPaletteForModeChange = paletteNumber;
+        var currentMode = paletteNumber == 1 ? Palette1Mode : Palette2Mode;
+
+        if (currentMode == PaletteMode.Active)
+        {
+            // Von aktiv zu Wechselmodus - Bestätigung erforderlich
+            showChangeModeConfirmDialog = true;
+        }
+        else
+        {
+            // Von Wechselmodus zu aktiv - Bestätigung erforderlich
+            showEndChangeModeDialog = true;
+        }
+    }
+
+    private async Task ConfirmChangeMode()
+    {
+        showChangeModeConfirmDialog = false;
+        isEndingChangeMode = false;
+        await StartWechselmodusWorkflow(selectedPaletteForModeChange);
+    }
+
+    private async Task ConfirmEndChangeMode()
+    {
+        showEndChangeModeDialog = false;
+        isEndingChangeMode = true;
+        await StartEndChangeModeWorkflow(selectedPaletteForModeChange);
+    }
+
+    private void CancelModeChange()
+    {
+        showChangeModeConfirmDialog = false;
+        showEndChangeModeDialog = false;
+        selectedPaletteForModeChange = 0;
+    }
+
+    private void CloseErrorDialog()
+    {
+        showWechselmodusErrorDialog = false;
+        wechselmodusError = "";
+    }
+
+    // Register-Adressen für CHANGE_PAL_X
+    private int GetChangeRegisterAddress(int paletteId) => paletteId == 1 ? 187 : 188;
+
+    // Register-Adressen für DOOR_PAL_X_UNLOD
+    private int GetDoorUnlockRegisterAddress(int paletteId) => paletteId == 1 ? 87 : 88;
+
+    /// <summary>
+    /// Startet den Wechselmodus-Workflow (Vue: startWechselmodusWorkflow)
+    /// </summary>
+    private async Task StartWechselmodusWorkflow(int paletteId)
+    {
+        wechselmodusInProgress = true;
+        wechselmodusStep = 1;
+        wechselmodusError = "";
+        StateHasChanged();
+
+        try
+        {
+            // Step 4: Erste Systemprüfung - Prüfen ob ein Werkstück den Zustand 4/5 hat
+            wechselmodusStep = 4;
+            StateHasChanged();
+
+            var workpiecesWithCriticalStatus = CheckPaletteForCriticalStatus(paletteId);
+
+            if (workpiecesWithCriticalStatus.Count > 0)
+            {
+                var workpieceDetails = string.Join(", ", workpiecesWithCriticalStatus.Select(w =>
+                {
+                    var statusText = w.State == WorkpieceState.AtRobot
+                        ? T.Translate("workpiece.atRobot")
+                        : T.Translate("workpiece.inMachine");
+                    return $"Position {w.Position} (Register R{w.RegisterAddress}: {statusText})";
+                }));
+
+                throw new Exception($"{T.Translate("error.changeModeNotPossible")}\n\n{workpieceDetails}\n\n{T.Translate("error.waitForProcessing")}");
+            }
+
+            // Step 5: Zweite Systemprüfung - Prüfen ob Werkstück im R[46 PICK_UP] Register steht
+            wechselmodusStep = 5;
+            StateHasChanged();
+
+            var pickupCheck = await CheckPickupRegister(paletteId);
+            if (pickupCheck.HasConflict)
+            {
+                throw new Exception($"{T.Translate("error.workpieceInPickup", paletteId)}\n\n{pickupCheck.WorkpieceInfo}\n\n{T.Translate("error.waitForPickup")}");
+            }
+
+            // Step 6: Register setzen und warten
+            wechselmodusStep = 6;
+            StateHasChanged();
+
+            // Register CHANGE_PAL_X auf 1 setzen
+            await SetChangeRegister(paletteId, 1);
+
+            // Warten bis DOOR_PAL_X_UNLOD = 1
+            await WaitForDoorUnlock(paletteId);
+
+            // Step 7: Werkstücke sperren
+            wechselmodusStep = 7;
+            StateHasChanged();
+            await LockAllPartsInPalette(paletteId);
+
+            // Step 8: Wechselmodus aktivieren
+            wechselmodusStep = 8;
+            StateHasChanged();
+
+            if (paletteId == 1)
+            {
+                Palette1Mode = PaletteMode.Change;
+            }
+            else
+            {
+                Palette2Mode = PaletteMode.Change;
+            }
+        }
+        catch (Exception ex)
+        {
+            wechselmodusError = ex.Message;
+            showWechselmodusErrorDialog = true;
+
+            // Rollback bei Fehler
+            await RollbackWechselmodus(paletteId);
+        }
+        finally
+        {
+            wechselmodusInProgress = false;
+            wechselmodusStatusMessage = "";
+            selectedPaletteForModeChange = 0;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Startet den "Wechselmodus beenden"-Workflow (Vue: startEndChangeModeWorkflow)
+    /// </summary>
+    private async Task StartEndChangeModeWorkflow(int paletteId)
+    {
+        wechselmodusInProgress = true;
+        wechselmodusStep = 1;
+        wechselmodusError = "";
+        StateHasChanged();
+
+        try
+        {
+            // Step 1: Prüfen ob Werkstück im R[41-NEXT_PICK_UP] Register steht
+            wechselmodusStep = 1;
+            StateHasChanged();
+
+            var nextPickupCheck = await CheckNextPickUpRegister(paletteId);
+            if (nextPickupCheck.HasWorkpiece)
+            {
+                // Step 2: R[141-NEXT_PICK_UP] auf 0 setzen
+                wechselmodusStep = 2;
+                StateHasChanged();
+                await RobotService.WriteRegisterAsync(141, 0);
+            }
+
+            // Step 3: R[187/188-CHANGE_PAL_1/2] auf 0 setzen
+            wechselmodusStep = 3;
+            StateHasChanged();
+            await SetChangeRegister(paletteId, 0);
+
+            // Step 4: Warten bis Tür geschlossen ist
+            wechselmodusStep = 4;
+            StateHasChanged();
+            await WaitForDoorClosed(paletteId);
+
+            // Step 5: Wechselmodus beenden
+            wechselmodusStep = 5;
+            StateHasChanged();
+
+            if (paletteId == 1)
+            {
+                Palette1Mode = PaletteMode.Active;
+            }
+            else
+            {
+                Palette2Mode = PaletteMode.Active;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!string.IsNullOrEmpty(ex.Message))
+            {
+                wechselmodusError = ex.Message;
+                showWechselmodusErrorDialog = true;
+            }
+        }
+        finally
+        {
+            wechselmodusInProgress = false;
+            wechselmodusStatusMessage = "";
+            selectedPaletteForModeChange = 0;
+            StateHasChanged();
+        }
+    }
+
+    private List<WorkpieceStatus> CheckPaletteForCriticalStatus(int paletteId)
+    {
+        var palette = paletteId == 1 ? Palette1Workpieces : Palette2Workpieces;
+        return palette.Where(w => w.State == WorkpieceState.AtRobot || w.State == WorkpieceState.InMachine).ToList();
+    }
+
+    private async Task<(bool HasConflict, string? WorkpieceInfo)> CheckPickupRegister(int paletteId)
+    {
+        var pickupValue = await RobotService.ReadRegisterAsync(46);
+        if (!pickupValue.HasValue || pickupValue.Value == 0)
+        {
+            return (false, null);
+        }
+
+        // Prüfe ob Werkstück zur angegebenen Palette gehört
+        var palette = paletteId == 1 ? Palette1Workpieces : Palette2Workpieces;
+
+        // Konvertiere R50-65 Adresse zu aktuellem Register
+        var convertedAddress = ConvertToCurrentRegisterAddress(pickupValue.Value, palette);
+        var conflictWorkpiece = palette.FirstOrDefault(w => w.RegisterAddress == convertedAddress);
+
+        if (conflictWorkpiece != null)
+        {
+            return (true, $"Position {conflictWorkpiece.Position} (Register R{conflictWorkpiece.RegisterAddress})");
+        }
+
+        return (false, null);
+    }
+
+    private async Task<(bool HasWorkpiece, string? WorkpieceInfo)> CheckNextPickUpRegister(int paletteId)
+    {
+        var nextPickupValue = await RobotService.ReadRegisterAsync(41);
+        if (!nextPickupValue.HasValue || nextPickupValue.Value == 0)
+        {
+            return (false, null);
+        }
+
+        var palette = paletteId == 1 ? Palette1Workpieces : Palette2Workpieces;
+        var convertedAddress = ConvertToCurrentRegisterAddress(nextPickupValue.Value, palette);
+        var workpiece = palette.FirstOrDefault(w => w.RegisterAddress == convertedAddress);
+
+        if (workpiece != null)
+        {
+            return (true, $"Position {workpiece.Position} (Register R{workpiece.RegisterAddress})");
+        }
+
+        return (false, null);
+    }
+
+    private int ConvertToCurrentRegisterAddress(int r50BasedAddress, List<WorkpieceStatus> palette)
+    {
+        if (r50BasedAddress == 0) return 0;
+
+        bool isR50Range = r50BasedAddress >= 50 && r50BasedAddress <= 57;
+        bool isR58Range = r50BasedAddress >= 58 && r50BasedAddress <= 65;
+
+        if (!isR50Range && !isR58Range) return r50BasedAddress;
+
+        int currentBaseAddress = palette.Count > 0 && palette[0].RegisterAddress >= 150 ? 150 : 50;
+
+        if (isR50Range)
+        {
+            return currentBaseAddress + (r50BasedAddress - 50);
+        }
+        else
+        {
+            return currentBaseAddress + 8 + (r50BasedAddress - 58);
+        }
+    }
+
+    private async Task SetChangeRegister(int paletteId, int value)
+    {
+        var registerAddress = GetChangeRegisterAddress(paletteId);
+        var success = await RobotService.WriteRegisterAsync(registerAddress, value);
+        if (!success)
+        {
+            throw new Exception(T.Translate("error.setChangeRegister", paletteId));
+        }
+    }
+
+    private async Task WaitForDoorUnlock(int paletteId, int timeoutMs = 60000)
+    {
+        var doorRegisterAddress = GetDoorUnlockRegisterAddress(paletteId);
+        var startTime = DateTime.Now;
+
+        while ((DateTime.Now - startTime).TotalMilliseconds < timeoutMs)
+        {
+            var doorStatus = await RobotService.ReadRegisterAsync(doorRegisterAddress);
+
+            // Update Status-Nachricht mit aktuellem Wert
+            wechselmodusStatusMessage = T.Translate("wait.doorRelease", doorRegisterAddress, doorStatus?.ToString() ?? "null");
+            StateHasChanged();
+
+            if (doorStatus.HasValue && doorStatus.Value == 1)
+            {
+                wechselmodusStatusMessage = "";
+                return;
+            }
+
+            await Task.Delay(1000);
+        }
+
+        throw new Exception(T.Translate("error.doorTimeout", paletteId, timeoutMs));
+    }
+
+    private async Task WaitForDoorClosed(int paletteId)
+    {
+        var doorRegisterAddress = GetDoorUnlockRegisterAddress(paletteId);
+
+        while (wechselmodusInProgress)
+        {
+            var doorStatus = await RobotService.ReadRegisterAsync(doorRegisterAddress);
+
+            if (!doorStatus.HasValue || doorStatus.Value == 0)
+            {
+                // Tür geschlossen
+                wechselmodusStatusMessage = "";
+                return;
+            }
+
+            if (doorStatus.Value == 2)
+            {
+                wechselmodusStatusMessage = T.Translate("wait.closeDoor", paletteId);
+            }
+            else if (doorStatus.Value == 1)
+            {
+                wechselmodusStatusMessage = T.Translate("wait.doorStillReleased", paletteId);
+            }
+
+            StateHasChanged();
+            await Task.Delay(2000);
+        }
+
+        // Workflow wurde abgebrochen
+        throw new Exception("");
+    }
+
+    private async Task LockAllPartsInPalette(int paletteId)
+    {
+        var palette = paletteId == 1 ? Palette1Workpieces : Palette2Workpieces;
+
+        // Setze alle Werkstücke auf Status 1 (Locked)
+        foreach (var workpiece in palette)
+        {
+            // Schreibe in R150-165 Bereich (nicht R50-65)
+            var targetAddress = workpiece.RegisterAddress >= 50 && workpiece.RegisterAddress <= 65
+                ? workpiece.RegisterAddress + 100
+                : workpiece.RegisterAddress;
+
+            await RobotService.WriteRegisterAsync(targetAddress, (int)WorkpieceState.Locked);
+        }
+
+        // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
+        if (!RobotService.Status.IsRunning)
+        {
+            await RobotService.WriteRegisterAsync(148, 1);
+        }
+    }
+
+    private async Task RollbackWechselmodus(int paletteId)
+    {
+        try
+        {
+            await SetChangeRegister(paletteId, 0);
+
+            if (paletteId == 1)
+            {
+                Palette1Mode = PaletteMode.Active;
+            }
+            else
+            {
+                Palette2Mode = PaletteMode.Active;
+            }
+        }
+        catch
+        {
+            // Rollback-Fehler ignorieren
+        }
+    }
+
+    /// <summary>
+    /// Setzt alle Werkstücke einer Palette auf Status 2 (Unprocessed/Bereit)
+    /// Entspricht resetAllPartsInPalette in Vue
+    /// </summary>
+    private async Task ResetAllPartsInPalette(int paletteId)
+    {
+        var palette = paletteId == 1 ? Palette1Workpieces : Palette2Workpieces;
+
+        // Setze alle Werkstücke auf Status 2 (Unprocessed)
+        foreach (var workpiece in palette)
+        {
+            // Schreibe in R150-165 Bereich (nicht R50-65)
+            var targetAddress = workpiece.RegisterAddress >= 50 && workpiece.RegisterAddress <= 65
+                ? workpiece.RegisterAddress + 100
+                : workpiece.RegisterAddress;
+
+            await RobotService.WriteRegisterAsync(targetAddress, (int)WorkpieceState.Unprocessed);
+
+            // Aktualisiere lokalen State
+            workpiece.State = WorkpieceState.Unprocessed;
+        }
+
+        // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
+        if (!RobotService.Status.IsRunning)
+        {
+            await RobotService.WriteRegisterAsync(148, 1);
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task ResetPalette1()
+    {
+        await ResetAllPartsInPalette(1);
+    }
+
+    private async Task ResetPalette2()
+    {
+        await ResetAllPartsInPalette(2);
+    }
+
+    private void OnWorkpieceClick(WorkpieceStatus workpiece)
+    {
+        selectedWorkpiece = workpiece;
+        showWorkpieceContextMenu = true;
+    }
+
+    private void CloseContextMenu()
+    {
+        showWorkpieceContextMenu = false;
+        selectedWorkpiece = null;
+    }
+
+    private void OnWorkpieceStatusChanged(WorkpieceStatus workpiece)
+    {
+        // Trigger re-render after status change
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        // NOTE: We intentionally do NOT stop RobotMonitor here.
+        // RobotMonitor is a singleton and stopping/starting it on every page navigation
+        // causes connection issues with RoboGuide's FTP server.
+        // The monitor will continue running in the background, which is fine since
+        // it only polls registers when connected.
+
+        if (_eventHandlerRegistered)
+        {
+            RobotService.StatusChanged -= OnStatusChanged;
+            T.LanguageChanged -= OnLanguageChanged;
+            _eventHandlerRegistered = false;
+        }
+        _palette1Subscription?.Dispose();
+        _palette2Subscription?.Dispose();
+    }
+}

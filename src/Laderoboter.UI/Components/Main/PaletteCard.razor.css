@@ -1,0 +1,54 @@
+/* PaletteCard - Metal Palette Style wie in der Vue App */
+
+.palette-header {
+    padding: 1rem 1.5rem;
+}
+
+.palette-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.palette-content {
+    padding: 1.5rem;
+    flex: 1;
+    position: relative;
+}
+
+/* Processing Indicator */
+.processing-indicator {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 10;
+    background-color: #2563eb;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+}
+
+/* Button Icon */
+.btn-icon {
+    font-size: 1rem;
+    line-height: 1;
+}
+
+/* Animate spin keyframes */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
+}

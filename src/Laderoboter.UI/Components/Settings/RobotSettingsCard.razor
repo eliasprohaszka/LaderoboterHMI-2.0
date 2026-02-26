@@ -1,0 +1,121 @@
+@inject ISettingsService Settings
+@inject IRobotService RobotService
+@inject IRobotMonitor RobotMonitor
+
+<div class="settings-card">
+    <div class="card-header">
+        <h3>🤖 Roboterverbindung</h3>
+    </div>
+
+    <div class="card-body">
+        <div class="form-group">
+            <label>IP-Adresse / Pfad</label>
+            <input type="text" class="input" @bind="ipAddress" placeholder="192.168.1.1" />
+        </div>
+
+        <div class="form-group">
+            <label>Timeout (ms)</label>
+            <input type="number" class="input" @bind="timeout" min="500" max="10000" step="100" />
+        </div>
+
+        <div class="form-group checkbox-group">
+            <label>
+                <input type="checkbox" @bind="autoConnect" />
+                <span>Automatisch beim Start verbinden</span>
+            </label>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-primary" @onclick="SaveSettings" disabled="@isSaving">
+                @(isSaving ? "Speichern..." : "💾 Speichern")
+            </button>
+
+            @if (RobotService.IsConnected)
+            {
+                <button class="btn btn-secondary" @onclick="Disconnect">
+                    🔌 Trennen
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-success" @onclick="Connect" disabled="@isConnecting">
+                    @(isConnecting ? "Verbinden..." : "🔌 Verbinden")
+                </button>
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="message @messageType">@message</div>
+        }
+    </div>
+</div>
+
+@code {
+    private string ipAddress = "";
+    private int timeout = 2000;
+    private bool autoConnect = false;
+    private bool isSaving = false;
+    private bool isConnecting = false;
+    private string? message;
+    private string messageType = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ipAddress = await Settings.GetAsync("robot.connection.ip") ?? "192.168.1.1";
+        timeout = await Settings.GetAsync<int?>("robot.connection.timeout") ?? 2000;
+        autoConnect = await Settings.GetAsync<bool?>("robot.connection.autoConnect") ?? false;
+    }
+
+    private async Task SaveSettings()
+    {
+        isSaving = true;
+        message = null;
+
+        try
+        {
+            await Settings.SetAsync("robot.connection.ip", ipAddress);
+            await Settings.SetAsync("robot.connection.timeout", timeout);
+            await Settings.SetAsync("robot.connection.autoConnect", autoConnect);
+
+            message = "Einstellungen gespeichert";
+            messageType = "success";
+        }
+        catch (Exception ex)
+        {
+            message = $"Fehler: {ex.Message}";
+            messageType = "error";
+        }
+
+        isSaving = false;
+    }
+
+    private async Task Connect()
+    {
+        isConnecting = true;
+        message = null;
+
+        var success = await RobotService.ConnectAsync(ipAddress, timeout);
+
+        if (success)
+        {
+            message = "Verbindung hergestellt";
+            messageType = "success";
+            RobotMonitor.Start();
+        }
+        else
+        {
+            message = RobotService.Status.ErrorMessage ?? "Verbindung fehlgeschlagen";
+            messageType = "error";
+        }
+
+        isConnecting = false;
+    }
+
+    private async Task Disconnect()
+    {
+        await RobotService.DisconnectAsync();
+        message = "Verbindung getrennt";
+        messageType = "info";
+    }
+}

@@ -1,0 +1,95 @@
+<!-- MaintenanceActionTile (exact match to MaintenanceActionTile.vue) -->
+<div class="maintenance-tile h-full w-full">
+    <button @onclick="HandleClick"
+            disabled="@(Disabled || IsLoading)"
+            class="w-full h-full font-semibold rounded-xl maintenance-btn disabled:opacity-50 disabled:cursor-not-allowed p-6 flex flex-col items-center justify-center space-y-4 @VariantClass">
+        @if (IsLoading)
+        {
+            <div class="w-16 h-16 flex items-center justify-center">
+                <div class="spinner"></div>
+            </div>
+        }
+        else
+        {
+            <Blazicon Svg="@Icon" class="w-16 h-16" />
+        }
+        <span class="text-base font-medium">@Label</span>
+        @if (!string.IsNullOrEmpty(Sublabel))
+        {
+            <span class="text-xs opacity-90">@Sublabel</span>
+        }
+    </button>
+</div>
+
+<style>
+    .maintenance-tile {
+        min-height: 0;
+    }
+
+    .maintenance-btn {
+        transition: all 0.3s ease;
+        transform: translateY(0);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3),
+            inset 0 1px 3px rgba(255, 255, 255, 0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .maintenance-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+            135deg,
+            rgba(255, 255, 255, 0.25) 0%,
+            transparent 40%,
+            rgba(0, 0, 0, 0.15) 100%
+        );
+        pointer-events: none;
+    }
+
+    .maintenance-btn:active:not(:disabled) {
+        transform: translateY(2px) scale(0.98);
+    }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+@code {
+    [Parameter, EditorRequired] public SvgIcon Icon { get; set; } = default!;
+    [Parameter, EditorRequired] public string Label { get; set; } = "";
+    [Parameter] public string? Sublabel { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string Variant { get; set; } = "primary";
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    private string VariantClass => Variant switch
+    {
+        "secondary" => "bg-gray-600 text-white",
+        "danger" => "bg-red-600 text-white",
+        _ => "bg-primary text-white"
+    };
+
+    private async Task HandleClick()
+    {
+        if (OnClick.HasDelegate)
+            await OnClick.InvokeAsync();
+    }
+}

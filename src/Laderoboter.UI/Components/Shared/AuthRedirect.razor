@@ -1,0 +1,40 @@
+@inject IAuthStateService AuthState
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@if (AuthState.IsAuthenticated)
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (!AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+        }
+
+        AuthState.AuthStateChanged += OnAuthStateChanged;
+    }
+
+    private void OnAuthStateChanged(object? sender, User? user)
+    {
+        if (user == null)
+        {
+            InvokeAsync(() => Navigation.NavigateTo("/login"));
+        }
+        else
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthState.AuthStateChanged -= OnAuthStateChanged;
+    }
+}

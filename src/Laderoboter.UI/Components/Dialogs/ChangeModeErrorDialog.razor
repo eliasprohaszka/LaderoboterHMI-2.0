@@ -1,0 +1,41 @@
+@inject ITranslationService T
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnClose">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center gap-2">
+                    <div class="p-2 bg-red-100 rounded-lg">
+                        <Blazicon Svg="Lucide.CircleAlert" class="w-5 h-5 text-red-600" />
+                    </div>
+                    <h3 class="dialog-title">@T.Translate("changeMode.error")</h3>
+                </div>
+                <button class="close-button" @onclick="OnClose">×</button>
+            </div>
+
+            <div class="dialog-body">
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+                    <p class="whitespace-pre-wrap">@ErrorMessage</p>
+                </div>
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-primary" @onclick="OnClose">
+                    @T.Translate("common.understood")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public string ErrorMessage { get; set; } = "";
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private async Task OnClose()
+    {
+        await OnClosed.InvokeAsync();
+    }
+}

@@ -1,0 +1,218 @@
+@page "/login"
+@layout LoginLayout
+@inject IAuthStateService AuthState
+@inject INfcService NfcService
+@inject ITranslationService T
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<div class="h-full flex items-center justify-center">
+    <div class="bg-white/40 backdrop-blur-md rounded-xl p-8 shadow-lg w-full max-w-lg mx-4">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <div class="p-3 bg-blue-100 rounded-full w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Blazicon Svg="Lucide.User" class="w-10 h-10 text-primary" />
+            </div>
+            <h1 class="text-2xl font-bold text-gray-800">@T.Translate("login.title")</h1>
+            <p class="text-gray-600 mt-2">@T.Translate("login.description")</p>
+        </div>
+
+        <!-- Error Message -->
+        @if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <div class="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
+                @_errorMessage
+            </div>
+        }
+
+        <!-- Login Form -->
+        <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@T.Translate("login.personalNumber")</label>
+                    <input type="text"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                           @bind="_personalNumber"
+                           @bind:event="oninput"
+                           placeholder="@T.Translate("login.personalNumberPlaceholder")"
+                           disabled="@_isLoading"
+                           @ref="_personalNumberInput" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">@T.Translate("login.password")</label>
+                    <input type="password"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
+                           @bind="_password"
+                           @bind:event="oninput"
+                           placeholder="@T.Translate("login.passwordPlaceholder")"
+                           disabled="@_isLoading" />
+                </div>
+
+                <button type="submit"
+                        class="w-full py-3 px-4 bg-primary text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled="@(_isLoading || string.IsNullOrWhiteSpace(_personalNumber) || string.IsNullOrWhiteSpace(_password))">
+                    @if (_isLoading)
+                    {
+                        <span class="flex items-center justify-center">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            @T.Translate("login.loggingIn")
+                        </span>
+                    }
+                    else
+                    {
+                        @T.Translate("login.login")
+                    }
+                </button>
+            </div>
+        </form>
+
+        <!-- NFC Section -->
+        <div class="mt-6 pt-6 border-t border-gray-200">
+            <div class="text-center">
+                @if (NfcService.IsReaderConnected)
+                {
+                    <div class="flex items-center justify-center space-x-2 text-gray-600">
+                        @if (NfcService.IsListening)
+                        {
+                            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                            <span class="text-sm">@T.Translate("login.nfcReady")</span>
+                        }
+                        else
+                        {
+                            <div class="w-3 h-3 bg-gray-400 rounded-full"></div>
+                            <span class="text-sm">@T.Translate("login.nfcAvailable")</span>
+                        }
+                    </div>
+                    <p class="text-sm text-gray-500 mt-2">@T.Translate("login.nfcHint")</p>
+                }
+                else
+                {
+                    <div class="flex items-center justify-center space-x-2 text-gray-400">
+                        <Blazicon Svg="Lucide.WifiOff" class="w-4 h-4" />
+                        <span class="text-sm">@T.Translate("login.nfcNotConnected")</span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _personalNumber = "";
+    private string _password = "";
+    private string? _errorMessage;
+    private bool _isLoading;
+    private ElementReference _personalNumberInput;
+
+    protected override void OnInitialized()
+    {
+        // Redirect if already authenticated
+        if (AuthState.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        // Subscribe to NFC events
+        NfcService.OnCardDetected += OnNfcCardDetected;
+        NfcService.StartListening();
+
+        T.LanguageChanged += OnLanguageChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await _personalNumberInput.FocusAsync();
+            }
+            catch
+            {
+                // Ignore focus errors
+            }
+        }
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnNfcCardDetected(object? sender, string rfidUid)
+    {
+        if (_isLoading)
+            return;
+
+        await InvokeAsync(async () =>
+        {
+            _isLoading = true;
+            _errorMessage = null;
+            StateHasChanged();
+
+            try
+            {
+                var success = await AuthState.LoginByRfidAsync(rfidUid);
+                if (success)
+                {
+                    Navigation.NavigateTo("/");
+                }
+                else
+                {
+                    _errorMessage = T.Translate("login.nfcNotRecognized");
+                }
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = ex.Message;
+            }
+            finally
+            {
+                _isLoading = false;
+                StateHasChanged();
+            }
+        });
+    }
+
+    private async Task HandleLogin()
+    {
+        if (string.IsNullOrWhiteSpace(_personalNumber) || string.IsNullOrWhiteSpace(_password))
+            return;
+
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var success = await AuthState.LoginAsync(_personalNumber, _password);
+            if (success)
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = T.Translate("login.invalidCredentials");
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    public void Dispose()
+    {
+        NfcService.OnCardDetected -= OnNfcCardDetected;
+        NfcService.StopListening();
+        T.LanguageChanged -= OnLanguageChanged;
+    }
+}

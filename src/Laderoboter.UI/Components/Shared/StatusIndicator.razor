@@ -1,0 +1,56 @@
+@inject IRobotService RobotService
+
+<div class="status-indicator @(IsConnected ? "connected" : "disconnected")">
+    <div class="status-dot"></div>
+    <div class="status-text">
+        @if (IsConnected)
+        {
+            <span class="status-label">Verbunden</span>
+            <span class="status-ip">@IpAddress</span>
+        }
+        else
+        {
+            <span class="status-label">Nicht verbunden</span>
+        }
+    </div>
+
+    @if (!IsConnected)
+    {
+        <button class="connect-button" @onclick="OnConnectClick">
+            Verbinden
+        </button>
+    }
+    else
+    {
+        <button class="disconnect-button" @onclick="OnDisconnectClick">
+            Trennen
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsConnected { get; set; }
+    [Parameter] public string? IpAddress { get; set; }
+    [Parameter] public EventCallback OnConnect { get; set; }
+    [Parameter] public EventCallback OnDisconnect { get; set; }
+
+    private async Task OnConnectClick()
+    {
+        if (OnConnect.HasDelegate)
+        {
+            await OnConnect.InvokeAsync();
+        }
+    }
+
+    private async Task OnDisconnectClick()
+    {
+        if (OnDisconnect.HasDelegate)
+        {
+            await OnDisconnect.InvokeAsync();
+        }
+        else
+        {
+            await RobotService.DisconnectAsync();
+        }
+    }
+}

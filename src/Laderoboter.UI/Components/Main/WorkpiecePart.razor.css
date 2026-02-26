@@ -1,0 +1,51 @@
+/* WorkpiecePart - Identisch zur Vue PalettePart Komponente */
+
+.workpiece {
+    min-height: 100px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 1rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+}
+
+.workpiece-content {
+    position: relative;
+    z-index: 10;
+}
+
+.workpiece-id {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.workpiece-status {
+    font-size: 0.75rem;
+    margin-top: 0.25rem;
+    opacity: 0.8;
+}
+
+/* Sequence Number Badge */
+.workpiece-sequence {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 20;
+    background-color: white;
+    border-radius: 9999px;
+    width: 1.75rem;
+    height: 1.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.workpiece-sequence span {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #1f2937;
+}

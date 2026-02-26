@@ -1,0 +1,53 @@
+.app-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 1.5rem;
+    background-color: #2d3748;
+    color: white;
+    font-size: 0.875rem;
+}
+
+.footer-left,
+.footer-right {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.footer-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.footer-label {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.status-dot.connected {
+    background-color: #48bb78;
+    box-shadow: 0 0 8px #48bb78;
+}
+
+.status-dot.disconnected {
+    background-color: #fc8181;
+    box-shadow: 0 0 8px #fc8181;
+}
+
+.footer-warning {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    background-color: rgba(237, 137, 54, 0.2);
+    border: 1px solid #ed8936;
+    border-radius: 0.25rem;
+    color: #ed8936;
+}

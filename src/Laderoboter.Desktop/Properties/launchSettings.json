@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Laderoboter.Desktop": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}
