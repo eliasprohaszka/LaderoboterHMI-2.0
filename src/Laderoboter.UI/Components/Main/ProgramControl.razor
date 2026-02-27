@@ -2,9 +2,10 @@
 @inject ITranslationService T
 @implements IDisposable
 
-<!-- Control Buttons -->
-<div class="flex flex-row items-center justify-between gap-4">
-    <div class="flex gap-4">
+<!-- Control Buttons - Vertical layout: two columns -->
+<div class="flex flex-row gap-4">
+    <!-- Left column: Autostart, Autostop, Pause -->
+    <div class="flex flex-col gap-3 flex-1">
         <!-- Autostart Button -->
         <button @onclick="StartMainProgram"
                 disabled="@(!RobotService.IsConnected || IsMainProgramRunning)"
@@ -24,7 +25,7 @@
         <!-- Pause Button -->
         <button @onclick="PauseCurrentProgram"
                 disabled="@(!RobotService.IsConnected || !IsMainProgramRunning)"
-                class="px-6 py-4 w-[230px] bg-orange-500 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-6 py-3 bg-orange-500 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
             @if (IsProgramPaused)
             {
                 <Blazicon Svg="Lucide.Play" class="w-6 h-6 mr-3" />
@@ -37,11 +38,12 @@
         </button>
     </div>
 
-    <div class="flex gap-4">
+    <!-- Right column: Stop, Reset -->
+    <div class="flex flex-col gap-3 flex-1">
         <!-- Stop Button -->
         <button @onclick="StopCurrentProgram"
                 disabled="@(!RobotService.IsConnected)"
-                class="px-6 py-4 w-[230px] bg-red-600 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
             <Blazicon Svg="Lucide.Square" class="w-6 h-6 mr-3" />
             @T.Translate("program.stop")
         </button>
@@ -49,7 +51,7 @@
         <!-- Reset Button -->
         <button @onclick="ResetSystem"
                 disabled="@(!RobotService.IsConnected)"
-                class="px-6 py-4 w-[230px] bg-gray-600 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
+                class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
             <Blazicon Svg="Lucide.RotateCcw" class="w-6 h-6 mr-3" />
             @T.Translate("program.reset")
         </button>
@@ -75,7 +77,7 @@
 
     private string GetAutostartButtonClass()
     {
-        var baseClass = "px-6 py-4 w-[230px] text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed";
+        var baseClass = "px-6 py-3 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed";
         return IsMainProgramRunning
             ? $"{baseClass} bg-green-600 pulse-green"
             : $"{baseClass} bg-green-600";
@@ -83,7 +85,7 @@
 
     private string GetAutostopButtonClass()
     {
-        var baseClass = "px-6 py-4 w-[230px] text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed";
+        var baseClass = "px-6 py-3 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed";
         return IsAutostopActive
             ? $"{baseClass} bg-yellow-600 pulse-yellow"
             : $"{baseClass} bg-yellow-600";

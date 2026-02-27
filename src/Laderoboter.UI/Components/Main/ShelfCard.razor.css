@@ -1,0 +1,16 @@
+/* ShelfCard - 7x4 Regal Grid Layout */
+
+.shelf-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    height: 100%;
+}
+
+.shelf-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+    flex: 1;
+    min-height: 0;
+}

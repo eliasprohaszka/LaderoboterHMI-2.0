@@ -29,8 +29,8 @@ public static class MauiProgram
                         var windowId = Microsoft.UI.Win32Interop.GetWindowIdFromWindow(handle);
                         var appWindow = Microsoft.UI.Windowing.AppWindow.GetFromWindowId(windowId);
 
-                        // Set default window size to 1366 x 768
-                        appWindow.Resize(new Windows.Graphics.SizeInt32(1366, 768));
+                        // Set default window size to 768 x 1366 (vertical orientation)
+                        appWindow.Resize(new Windows.Graphics.SizeInt32(768, 1366));
                     }));
 #endif
             });

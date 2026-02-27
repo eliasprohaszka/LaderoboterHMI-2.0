@@ -1,14 +1,14 @@
 @using Laderoboter.Core.Models
 @inject ITranslationService T
 
-<!-- PaletteCard (exact match to PaletteCard.vue) -->
+<!-- ShelfCard - 7x4 Regal Layout (R1-1 bis R7-4) -->
 <div class="metal-palette border-l-4 border-primary h-full flex flex-col rounded-xl overflow-hidden">
     <!-- CardHeader -->
     <div class="p-4">
         <div class="flex justify-between items-center">
-            <h3 class="text-xl font-semibold">@Title</h3>
+            <h3 class="text-xl font-semibold">Regal</h3>
             <div class="flex items-center space-x-2">
-                @if (Mode == PaletteMode.Change)
+                @if (Mode == ShelfMode.Change)
                 {
                     <button class="p-3 h-10 w-10 bg-gray-600 text-white font-semibold rounded-lg robot-control-btn flex items-center justify-center"
                             @onclick="OnResetClick"
@@ -16,7 +16,7 @@
                         <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4" />
                     </button>
                 }
-                <button class="p-3 h-10 w-10 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 flex items-center justify-center @(Mode == PaletteMode.Change ? "bg-green-600" : "bg-gray-600")"
+                <button class="p-3 h-10 w-10 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 flex items-center justify-center @(Mode == ShelfMode.Change ? "bg-green-600" : "bg-gray-600")"
                         @onclick="OnToggleModeClick"
                         disabled="@IsInProgress"
                         title="@ModeToggleTitle">
@@ -24,7 +24,7 @@
                     {
                         <span class="spinner w-4 h-4"></span>
                     }
-                    else if (Mode == PaletteMode.Active)
+                    else if (Mode == ShelfMode.Active)
                     {
                         <Blazicon Svg="Lucide.ArrowUpDown" class="w-5 h-5" />
                     }
@@ -38,7 +38,7 @@
     </div>
 
     <!-- CardContent -->
-    <div class="p-3 flex-1 relative min-h-0 overflow-hidden">
+    <div class="p-4 flex-1 relative min-h-0 overflow-hidden">
         <!-- Status Change Processing Indicator -->
         @if (ShowProcessingIndicator)
         {
@@ -48,16 +48,21 @@
             </div>
         }
 
-        <div class="grid grid-cols-2 grid-rows-4 gap-2 h-full">
-            @* Layout: 2 columns, 4 rows
-               Left column (top to bottom): P-4, P-3, P-2, P-1
-               Right column (top to bottom): P-8, P-7, P-6, P-5 *@
-            @foreach (var position in new[] { 4, 8, 3, 7, 2, 6, 1, 5 })
+        <!-- 7 Rows x 4 Columns Grid -->
+        <div class="grid grid-cols-4 grid-rows-7 gap-2 h-full">
+            @for (int row = 1; row <= 7; row++)
             {
-                var workpiece = GetWorkpieceAtPosition(position);
-                if (workpiece != null)
+                for (int col = 1; col <= 4; col++)
                 {
-                    <WorkpiecePart Workpiece="@workpiece" PaletteId="@PaletteId" OnWorkpieceClick="HandleWorkpieceClick" />
+                    var currentRow = row;
+                    var currentCol = col;
+                    var position = (currentRow - 1) * 4 + currentCol;
+                    var workpiece = GetWorkpieceAtPosition(position);
+                    <ShelfPart
+                        Row="@currentRow"
+                        Column="@currentCol"
+                        Workpiece="@workpiece"
+                        OnWorkpieceClick="HandleWorkpieceClick" />
                 }
             }
         </div>
@@ -65,14 +70,11 @@
 </div>
 
 @code {
-    [Parameter] public int PaletteId { get; set; }
-    [Parameter] public string Title { get; set; } = "Palette";
     [Parameter] public List<WorkpieceStatus> Workpieces { get; set; } = new();
-    [Parameter] public PaletteMode Mode { get; set; } = PaletteMode.Active;
+    [Parameter] public ShelfMode Mode { get; set; } = ShelfMode.Active;
     [Parameter] public bool IsInProgress { get; set; }
     [Parameter] public int ProgressStep { get; set; }
     [Parameter] public bool ShowProcessingIndicator { get; set; }
-    [Parameter] public int QueueLength { get; set; }
 
     [Parameter] public EventCallback OnReset { get; set; }
     [Parameter] public EventCallback OnToggleMode { get; set; }
@@ -80,13 +82,11 @@
 
     private string ModeToggleTitle => IsInProgress
         ? T.Translate("changeMode.inProgress", ProgressStep)
-        : (Mode == PaletteMode.Active ? T.Translate("changeMode.activate") : T.Translate("changeMode.end"));
+        : (Mode == ShelfMode.Active ? T.Translate("changeMode.activate") : T.Translate("changeMode.end"));
 
     private WorkpieceStatus? GetWorkpieceAtPosition(int position)
     {
-        // Position in Workpieces list is 1-based for palette 1 (1-8) or 9-16 for palette 2
-        // We need to find by the position modulo
-        return Workpieces.FirstOrDefault(w => ((w.Position - 1) % 8) + 1 == position);
+        return Workpieces.FirstOrDefault(w => w.Position == position);
     }
 
     private async Task OnResetClick()
@@ -107,7 +107,7 @@
             await OnWorkpieceClick.InvokeAsync(workpiece);
     }
 
-    public enum PaletteMode
+    public enum ShelfMode
     {
         Active,
         Change

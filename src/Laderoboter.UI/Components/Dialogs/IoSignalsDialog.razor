@@ -8,45 +8,45 @@
         <div class="bg-white rounded-lg shadow-xl w-[98vw] max-w-[98vw] max-h-[90vh] overflow-hidden flex flex-col"
              @onclick:stopPropagation="true">
             <!-- Header -->
-            <div class="px-6 py-4 border-b">
+            <div class="px-4 py-2 border-b">
                 <div class="flex items-center justify-between">
                     <div>
-                        <h2 class="text-xl font-semibold">@T.Translate("io.title")</h2>
-                        <p class="text-sm text-gray-600">@T.Translate("io.description")</p>
+                        <h2 class="text-base font-semibold">@T.Translate("io.title")</h2>
+                        <p class="text-xs text-gray-600">@T.Translate("io.description")</p>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1.5">
                         <div class="w-2 h-2 rounded-full @(RobotService.IsConnected ? "bg-green-500 animate-pulse" : "bg-red-500")"></div>
-                        <span class="text-sm text-gray-600">@(RobotService.IsConnected ? T.Translate("common.connected") : T.Translate("common.notConnected"))</span>
+                        <span class="text-xs text-gray-600">@(RobotService.IsConnected ? T.Translate("common.connected") : T.Translate("common.notConnected"))</span>
                     </div>
                 </div>
             </div>
 
             <!-- Content -->
-            <div class="flex-1 overflow-y-auto p-6">
-                <div class="grid grid-cols-2 gap-8">
+            <div class="flex-1 overflow-y-auto p-4">
+                <div class="grid grid-cols-2 gap-6">
                     <!-- Digital Inputs Section -->
-                    <div class="space-y-3">
-                        <h3 class="font-semibold text-base text-black border-b pb-2">@T.Translate("io.digitalInputs")</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                        <h3 class="font-semibold text-sm text-black border-b pb-1 mb-3">@T.Translate("io.digitalInputs")</h3>
+                        <div class="space-y-3">
                             @foreach (var category in digitalInputCategories)
                             {
-                                <div class="space-y-2">
-                                    <h4 class="font-medium text-xs text-black uppercase tracking-wide px-1">@category.Name</h4>
+                                <div class="border rounded p-2 bg-gray-50">
+                                    <h4 class="font-medium text-xs text-black uppercase tracking-wide mb-2">@category.Name</h4>
                                     <div class="space-y-1.5">
                                         @foreach (var signal in category.Signals)
                                         {
-                                            <div class="flex items-center justify-between p-2 rounded border transition-colors @(signal.Value ? "bg-green-50 border-green-400" : "bg-red-50 border-red-400")">
-                                                <div class="flex items-center space-x-2 flex-1 min-w-0">
-                                                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500 shadow-lg shadow-green-500/50" : "bg-red-500 shadow-lg shadow-red-500/50")"></div>
-                                                    <span class="font-mono text-sm font-medium text-gray-900 truncate">@signal.Name</span>
+                                            <div class="flex items-center justify-between p-2 rounded border @(signal.Value ? "bg-green-50 border-green-400" : "bg-red-50 border-red-400")">
+                                                <div class="flex items-center gap-2 flex-1 min-w-0">
+                                                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500" : "bg-red-500")"></div>
+                                                    <span class="font-mono text-xs font-medium text-gray-900 truncate">@signal.Name</span>
                                                 </div>
-                                                <div class="flex items-center space-x-1">
-                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(signal.Value ? "bg-green-600 text-white" : "bg-gray-400 text-white")"
+                                                <div class="flex gap-1 flex-shrink-0">
+                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(signal.Value ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600")"
                                                             disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
                                                             @onclick="() => ToggleInput(signal, true)">
                                                         ON
                                                     </button>
-                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-400 text-white")"
+                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-300 text-gray-600")"
                                                             disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
                                                             @onclick="() => ToggleInput(signal, false)">
                                                         OFF
@@ -61,28 +61,28 @@
                     </div>
 
                     <!-- Digital Outputs Section -->
-                    <div class="space-y-3">
-                        <h3 class="font-semibold text-base text-black border-b pb-2">@T.Translate("io.digitalOutputs")</h3>
-                        <div class="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div>
+                        <h3 class="font-semibold text-sm text-black border-b pb-1 mb-3">@T.Translate("io.digitalOutputs")</h3>
+                        <div class="space-y-3">
                             @foreach (var category in digitalOutputCategories)
                             {
-                                <div class="space-y-2">
-                                    <h4 class="font-medium text-xs text-black uppercase tracking-wide px-1">@category.Name</h4>
+                                <div class="border rounded p-2 bg-gray-50">
+                                    <h4 class="font-medium text-xs text-black uppercase tracking-wide mb-2">@category.Name</h4>
                                     <div class="space-y-1.5">
                                         @foreach (var signal in category.Signals)
                                         {
-                                            <div class="flex items-center justify-between p-2 rounded border transition-colors @(signal.Value ? "bg-green-50 border-green-400" : "bg-red-50 border-red-400")">
-                                                <div class="flex items-center space-x-2 flex-1 min-w-0">
-                                                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500 shadow-lg shadow-green-500/50" : "bg-red-500 shadow-lg shadow-red-500/50")"></div>
-                                                    <span class="font-mono text-sm font-medium text-gray-900 truncate">@signal.Name</span>
+                                            <div class="flex items-center justify-between p-2 rounded border @(signal.Value ? "bg-green-50 border-green-400" : "bg-red-50 border-red-400")">
+                                                <div class="flex items-center gap-2 flex-1 min-w-0">
+                                                    <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500" : "bg-red-500")"></div>
+                                                    <span class="font-mono text-xs font-medium text-gray-900 truncate">@signal.Name</span>
                                                 </div>
-                                                <div class="flex items-center space-x-1">
-                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(signal.Value ? "bg-green-600 text-white" : "bg-gray-400 text-white")"
+                                                <div class="flex gap-1 flex-shrink-0">
+                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(signal.Value ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600")"
                                                             disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
                                                             @onclick="() => ToggleOutput(signal, true)">
                                                         ON
                                                     </button>
-                                                    <button class="h-7 px-3 text-xs font-medium rounded transition-colors @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-400 text-white")"
+                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-300 text-gray-600")"
                                                             disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
                                                             @onclick="() => ToggleOutput(signal, false)">
                                                         OFF
@@ -99,8 +99,8 @@
             </div>
 
             <!-- Footer -->
-            <div class="px-6 py-4 border-t flex justify-end">
-                <button class="px-4 py-2 bg-gray-600 text-white rounded-lg" @onclick="Close">
+            <div class="px-4 py-2 border-t flex justify-end">
+                <button class="px-3 py-1.5 text-sm bg-gray-600 text-white rounded-lg" @onclick="Close">
                     @T.Translate("common.close")
                 </button>
             </div>

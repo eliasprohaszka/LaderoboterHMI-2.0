@@ -15,7 +15,10 @@
       "Bash(del \"%LocalAppData%\\\\Laderoboter\\\\laderoboter.db\")",
       "Bash(dir \"%LocalAppData%\\\\Laderoboter\"\" 2>nul || echo \"Folder does not exist \")",
       "Bash(cmd /c \"dir %LocalAppData%\\\\Laderoboter\\\\ 2>nul || echo Folder does not exist\")",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "Bash(xcopy:*)",
+      "Skill(frontend-design)",
+      "Skill(frontend-design:*)"
     ]
   }
 }

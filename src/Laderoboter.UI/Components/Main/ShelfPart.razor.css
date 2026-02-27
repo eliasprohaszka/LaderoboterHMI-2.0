@@ -1,0 +1,12 @@
+/* ShelfPart - Identical style to WorkpiecePart but flexible height */
+
+.workpiece {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: white;
+}

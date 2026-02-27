@@ -1,12 +1,11 @@
 /* WorkpiecePart - Identisch zur Vue PalettePart Komponente */
 
 .workpiece {
-    min-height: 100px;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    padding: 1rem;
+    padding: 0.5rem;
     font-size: 0.75rem;
     font-weight: 500;
     color: white;

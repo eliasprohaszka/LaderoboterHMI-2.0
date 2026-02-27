@@ -1,5 +1,5 @@
-<!-- MaintenanceSplitTile (exact match to MaintenanceSplitTile.vue) -->
-<div class="maintenance-tile h-full w-full">
+<!-- MaintenanceSplitTile -->
+<div class="maintenance-tile h-full w-full @(FullWidth ? "col-span-2" : "")">
     <div class="flex gap-3 h-full">
         <button @onclick="HandleClickLeft"
                 disabled="@(DisabledLeft || IsLoadingLeft)"
@@ -94,6 +94,9 @@
 </style>
 
 @code {
+    // Layout
+    [Parameter] public bool FullWidth { get; set; }
+
     // Left button
     [Parameter, EditorRequired] public SvgIcon IconLeft { get; set; } = default!;
     [Parameter, EditorRequired] public string LabelLeft { get; set; } = "";
