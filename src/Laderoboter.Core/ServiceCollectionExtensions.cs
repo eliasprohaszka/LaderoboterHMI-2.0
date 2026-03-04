@@ -41,6 +41,10 @@ public static class ServiceCollectionExtensions
         var context = scope.ServiceProvider.GetRequiredService<LaderoboterDbContext>();
         var passwordService = serviceProvider.GetRequiredService<IPasswordService>();
         await DatabaseInitializer.InitializeAsync(context, passwordService);
+
+        // Seed settings and translations at runtime (not via migrations to keep them small)
+        await SettingsSeeder.SeedAsync(context);
+        await TranslationSeeder.SeedAsync(context);
     }
 
     public static async Task InitializeTranslationsAsync(this IServiceProvider serviceProvider)

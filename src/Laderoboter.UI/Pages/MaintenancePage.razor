@@ -7,56 +7,50 @@
 @implements IDisposable
 
 <div class="h-full">
-    <!-- Maintenance Section (exact match to maintenance.vue) -->
-    <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
+    <!-- Maintenance Section - Touch Optimized with Glassmorphism -->
+    <div class="glass-card w-full h-full flex flex-col overflow-hidden">
         <!-- Header -->
-        <div class="px-6 py-4">
-            <div class="flex items-center justify-between w-full">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-yellow-100 rounded-lg">
-                        <Blazicon Svg="Lucide.Settings" class="w-5 h-5 text-yellow-600" />
-                    </div>
-                    <div class="text-left">
-                        <span class="font-semibold text-lg">@T.Translate("maintenance.title")</span>
-                        <p class="text-sm text-gray-600 mt-1">@T.Translate("maintenance.description")</p>
-                    </div>
+        <div class="maintenance-header">
+            <div class="header-content">
+                <div class="header-icon-wrapper">
+                    <Blazicon Svg="Lucide.Wrench" class="header-icon" />
+                </div>
+                <div class="header-text">
+                    <h2 class="header-title">@T.Translate("maintenance.title")</h2>
+                    <p class="header-description">@T.Translate("maintenance.description")</p>
                 </div>
             </div>
         </div>
 
         <!-- Content -->
-        <div class="px-6 pb-6 flex-1 overflow-hidden">
+        <div class="maintenance-content">
             <MaintenanceGrid>
-                <!-- Werkstück ablegen -->
-                <MaintenanceActionTile
-                    Icon="Lucide.ArrowBigDownDash"
-                    Label="@T.Translate("maintenance.layDown")"
-                    Disabled="@(!RobotService.IsConnected)"
-                    OnClick="ShowLayDownConfirmation" />
+                <!-- Zeile 1: Werkstück ablegen + abholen -->
+                <MaintenanceSplitTile
+                    FullWidth="true"
+                    IconLeft="Lucide.ArrowBigDownDash"
+                    LabelLeft="@T.Translate("maintenance.layDown")"
+                    DisabledLeft="@(!RobotService.IsConnected)"
+                    OnClickLeft="ShowLayDownConfirmation"
+                    IconRight="Lucide.ArrowBigUpDash"
+                    LabelRight="@T.Translate("maintenance.pickUp")"
+                    DisabledRight="@(!RobotService.IsConnected)"
+                    OnClickRight="ShowPickUpConfirmation" />
 
-                <!-- Werkstück abholen -->
-                <MaintenanceActionTile
-                    Icon="Lucide.ArrowBigUpDash"
-                    Label="@T.Translate("maintenance.pickUp")"
-                    Disabled="@(!RobotService.IsConnected)"
-                    OnClick="ShowPickUpConfirmation" />
+                <!-- Zeile 2: Home + Wartungstür -->
+                <MaintenanceSplitTile
+                    FullWidth="true"
+                    IconLeft="Lucide.House"
+                    LabelLeft="@T.Translate("maintenance.homePosition")"
+                    DisabledLeft="@(!RobotService.IsConnected)"
+                    OnClickLeft="ShowHomeConfirmation"
+                    IconRight="Lucide.DoorOpen"
+                    LabelRight="@T.Translate("maintenance.maintenanceDoor")"
+                    SublabelRight="@T.Translate("maintenance.release")"
+                    DisabledRight="@(!RobotService.IsConnected)"
+                    OnClickRight="ToggleMaintenanceDoor" />
 
-                <!-- Home Position -->
-                <MaintenanceActionTile
-                    Icon="Lucide.House"
-                    Label="@T.Translate("maintenance.homePosition")"
-                    Disabled="@(!RobotService.IsConnected)"
-                    OnClick="ShowHomeConfirmation" />
-
-                <!-- Wartungstür -->
-                <MaintenanceActionTile
-                    Icon="Lucide.DoorOpen"
-                    Label="@T.Translate("maintenance.maintenanceDoor")"
-                    Sublabel="@T.Translate("maintenance.release")"
-                    Disabled="@(!RobotService.IsConnected)"
-                    OnClick="ToggleMaintenanceDoor" />
-
-                <!-- Ladetür -->
+                <!-- Zeile 3: Ladetür (öffnen/schließen) -->
                 <MaintenanceSplitTile
                     IconLeft="Lucide.DoorOpen"
                     LabelLeft="@T.Translate("maintenance.loadDoor")"
@@ -69,7 +63,7 @@
                     DisabledRight="@(!RobotService.IsConnected)"
                     OnClickRight="CloseLoadDoor" />
 
-                <!-- Palettentür -->
+                <!-- Zeile 3: Palettentür 1 + 2 -->
                 <MaintenanceSplitTile
                     IconLeft="Lucide.DoorOpen"
                     LabelLeft="@T.Translate("maintenance.paletteDoor1")"
@@ -82,7 +76,7 @@
                     DisabledRight="@(!RobotService.IsConnected)"
                     OnClickRight="() => TogglePaletteDoor(2)" />
 
-                <!-- I/O Signale und Fehler löschen -->
+                <!-- Zeile 4: I/O Signale + Fehler -->
                 <MaintenanceSplitTile
                     IconLeft="Lucide.Activity"
                     LabelLeft="@T.Translate("maintenance.ioSignals")"
@@ -93,7 +87,7 @@
                     DisabledRight="@(!RobotService.IsConnected || !hasActiveError)"
                     OnClickRight="ClearRobotError" />
 
-                <!-- RESET und STOP -->
+                <!-- Zeile 4: RESET + STOP -->
                 <MaintenanceSplitTile
                     IconLeft="Lucide.RefreshCw"
                     LabelLeft="@T.Translate("maintenance.reset")"
@@ -106,7 +100,7 @@
                     VariantRight="danger"
                     OnClickRight="EmergencyStop" />
 
-                <!-- PC Neustart/Herunterfahren - volle Breite -->
+                <!-- Zeile 5: PC Neustart + Herunterfahren -->
                 <MaintenanceSplitTile
                     FullWidth="true"
                     IconLeft="Lucide.RotateCcw"

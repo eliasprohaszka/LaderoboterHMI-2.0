@@ -1,0 +1,76 @@
+@* SpeedGauge - Clean Mixing Console Fader *@
+
+<div class="speed-gauge">
+    <!-- Value at top -->
+    <div class="gauge-value @ColorClass">@Value%</div>
+
+    <!-- Scale + Fader -->
+    <div class="gauge-body">
+        <!-- Scale labels -->
+        <div class="gauge-scale">
+            <span>100</span>
+            <span>80</span>
+            <span>60</span>
+            <span>40</span>
+            <span>20</span>
+            <span>0</span>
+        </div>
+
+        <!-- Fader (track + knob only) -->
+        <div class="fader-wrapper">
+            <!-- Track groove -->
+            <div class="fader-track">
+                <div class="track-fill @FillColorClass" style="height: @(Value)%"></div>
+            </div>
+
+            <!-- 3D Knob - positioned with CSS custom property -->
+            <div class="fader-knob" style="--value: @Value">
+                <div class="knob-body">
+                    <div class="knob-ridge"></div>
+                    <div class="knob-ridge"></div>
+                    <div class="knob-ridge"></div>
+                </div>
+            </div>
+
+            <!-- Invisible input -->
+            <input type="range"
+                   class="fader-input"
+                   min="0"
+                   max="100"
+                   step="@Step"
+                   value="@Value"
+                   disabled="@Disabled"
+                   @oninput="OnInput" />
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Value { get; set; } = 50;
+    [Parameter] public EventCallback<int> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public int Step { get; set; } = 5;
+
+    private string ColorClass => Value switch
+    {
+        <= 50 => "val-green",
+        <= 80 => "val-orange",
+        _ => "val-red"
+    };
+
+    private string FillColorClass => Value switch
+    {
+        <= 50 => "fill-green",
+        <= 80 => "fill-orange",
+        _ => "fill-red"
+    };
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int newValue))
+        {
+            Value = newValue;
+            await ValueChanged.InvokeAsync(newValue);
+        }
+    }
+}

@@ -1,0 +1,245 @@
+/* ===========================================
+   SpeedGauge - Clean Fader
+   =========================================== */
+
+/* Knob dimensions - used for calculations */
+:root {
+    --knob-height: 28px;
+}
+
+.speed-gauge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+/* Value at top */
+.gauge-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.75rem;
+    font-weight: 700;
+    transition: color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.gauge-value.val-green { color: #10b981; }
+.gauge-value.val-orange { color: #f59e0b; }
+.gauge-value.val-red { color: #ef4444; }
+
+/* Body: scale + fader side by side */
+.gauge-body {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 0;
+}
+
+/* Scale labels */
+.gauge-scale {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+}
+
+.gauge-scale span {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: var(--color-gray-400);
+    text-align: right;
+    line-height: 1;
+    min-width: 22px;
+    /* Center each label vertically on its position */
+    height: 0;
+    display: flex;
+    align-items: center;
+}
+
+/* First and last label need special handling */
+.gauge-scale span:first-child {
+    transform: translateY(50%);
+}
+
+.gauge-scale span:last-child {
+    transform: translateY(-50%);
+}
+
+/* Fader wrapper */
+.fader-wrapper {
+    position: relative;
+    width: 50px;
+}
+
+/* Track groove */
+.fader-track {
+    position: absolute;
+    width: 5px;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 2.5px;
+    overflow: hidden;
+
+    /* Dark inset groove */
+    background: #64748b;
+    box-shadow:
+        inset 1px 1px 3px rgba(0, 0, 0, 0.5),
+        inset -1px -1px 2px rgba(255, 255, 255, 0.1);
+}
+
+/* Filled portion */
+.track-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: 0 0 2.5px 2.5px;
+    transition: height 0.08s ease-out, background 0.2s ease;
+}
+
+.track-fill.fill-green {
+    background: linear-gradient(90deg, #047857 0%, #10b981 50%, #047857 100%);
+}
+
+.track-fill.fill-orange {
+    background: linear-gradient(90deg, #b45309 0%, #f59e0b 50%, #b45309 100%);
+}
+
+.track-fill.fill-red {
+    background: linear-gradient(90deg, #b91c1c 0%, #ef4444 50%, #b91c1c 100%);
+}
+
+/* 3D Fader Knob */
+.fader-knob {
+    --knob-h: 28px;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 44px;
+    height: var(--knob-h);
+    pointer-events: none;
+    z-index: 5;
+
+    /*
+     * Position: knob center should be at value% from bottom
+     * bottom = value% of track height, minus half knob height
+     * Using calc with the --value custom property
+     */
+    bottom: calc(var(--value, 50) * 1% - var(--knob-h) / 2);
+
+    transition: bottom 0.08s ease-out;
+}
+
+.knob-body {
+    width: 100%;
+    height: 100%;
+    border-radius: 5px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 2px;
+
+    /* Realistic plastic fader cap */
+    background: linear-gradient(
+        180deg,
+        #ffffff 0%,
+        #f8f8f8 5%,
+        #f0f0f0 15%,
+        #e8e8e8 35%,
+        #e0e0e0 50%,
+        #e8e8e8 65%,
+        #f0f0f0 85%,
+        #e0e0e0 95%,
+        #d8d8d8 100%
+    );
+
+    /* Strong 3D shadow */
+    box-shadow:
+        0 3px 1px rgba(0, 0, 0, 0.2),
+        0 4px 6px rgba(0, 0, 0, 0.15),
+        0 6px 10px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 #ffffff,
+        inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+        inset 1px 0 0 rgba(255, 255, 255, 0.6),
+        inset -1px 0 0 rgba(0, 0, 0, 0.08);
+
+    transition: box-shadow 0.1s ease, transform 0.1s ease;
+}
+
+/* Grip ridges */
+.knob-ridge {
+    width: 26px;
+    height: 2px;
+    border-radius: 1px;
+    background: linear-gradient(
+        180deg,
+        rgba(0, 0, 0, 0.1) 0%,
+        rgba(255, 255, 255, 0.95) 45%,
+        rgba(255, 255, 255, 0.95) 55%,
+        rgba(0, 0, 0, 0.08) 100%
+    );
+}
+
+/* Invisible input */
+.fader-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: grab;
+    z-index: 20;
+
+    writing-mode: vertical-lr;
+    direction: rtl;
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+}
+
+.fader-input:active {
+    cursor: grabbing;
+}
+
+.fader-input:disabled {
+    cursor: not-allowed;
+}
+
+/* Hover - lift knob */
+.fader-input:hover ~ .fader-knob .knob-body {
+    transform: translateY(-1px);
+    box-shadow:
+        0 4px 2px rgba(0, 0, 0, 0.2),
+        0 6px 10px rgba(0, 0, 0, 0.18),
+        0 8px 14px rgba(0, 0, 0, 0.12),
+        inset 0 1px 0 #ffffff,
+        inset 0 -1px 0 rgba(0, 0, 0, 0.12),
+        inset 1px 0 0 rgba(255, 255, 255, 0.7),
+        inset -1px 0 0 rgba(0, 0, 0, 0.06);
+}
+
+/* Active - pressed */
+.fader-input:active ~ .fader-knob .knob-body {
+    transform: translateY(0);
+    box-shadow:
+        0 2px 1px rgba(0, 0, 0, 0.25),
+        0 2px 4px rgba(0, 0, 0, 0.15),
+        0 3px 6px rgba(0, 0, 0, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.2),
+        inset 1px 0 0 rgba(255, 255, 255, 0.5),
+        inset -1px 0 0 rgba(0, 0, 0, 0.12);
+}

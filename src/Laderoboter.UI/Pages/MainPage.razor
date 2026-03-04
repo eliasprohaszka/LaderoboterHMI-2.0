@@ -8,7 +8,7 @@
 @inject ITranslationService T
 @implements IDisposable
 
-<div class="h-full">
+<div class="main-page-container">
     @if (!RobotService.IsConnected)
     {
         <!-- Connection Dialog -->
@@ -73,37 +73,31 @@
     }
     else
     {
-        <!-- Dashboard Content (exact match to main.vue) -->
-        <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
-            <!-- Header -->
-            <PaletteHeader Title="@T.Translate("palette.overview")" Description="@T.Translate("palette.overviewDescription")" />
+        <!-- Dashboard Content - Direct layout without card wrapper -->
+        <div class="dashboard-container">
+            <!-- Control Buttons Section -->
+            <div class="control-section">
+                <ProgramControl />
+            </div>
 
-            <!-- Content -->
-            <div class="px-6 flex-1 flex flex-col min-h-0">
-                <!-- Steuerungsbuttons horizontal oben -->
-                <div class="mb-6 flex-shrink-0">
-                    <ProgramControl />
+            <!-- Main Content Area: Palettes + Sidebar -->
+            <div class="main-section">
+                <!-- Palettes Area -->
+                <div class="palettes-area">
+                    <PaletteSection
+                        Palette1Workpieces="@Palette1Workpieces"
+                        Palette1Mode="@Palette1Mode"
+                        Palette2Workpieces="@Palette2Workpieces"
+                        Palette2Mode="@Palette2Mode"
+                        OnPalette1Reset="ResetPalette1"
+                        OnPalette2Reset="ResetPalette2"
+                        OnPalette1ToggleMode="TogglePalette1Mode"
+                        OnPalette2ToggleMode="TogglePalette2Mode"
+                        OnWorkpieceClick="OnWorkpieceClick" />
                 </div>
 
-                <!-- Paletten und Sidebar - nutzen verfügbaren Platz -->
-                <div class="flex-1 flex pb-6 gap-4 min-h-0">
-                    <!-- Paletten Bereich (mitte) -->
-                    <div class="flex-1 min-h-0">
-                        <PaletteSection
-                            Palette1Workpieces="@Palette1Workpieces"
-                            Palette1Mode="@Palette1Mode"
-                            Palette2Workpieces="@Palette2Workpieces"
-                            Palette2Mode="@Palette2Mode"
-                            OnPalette1Reset="ResetPalette1"
-                            OnPalette2Reset="ResetPalette2"
-                            OnPalette1ToggleMode="TogglePalette1Mode"
-                            OnPalette2ToggleMode="TogglePalette2Mode"
-                            OnWorkpieceClick="OnWorkpieceClick" />
-                    </div>
-
-                    <!-- Speed Override Sidebar (rechts) -->
-                    <SpeedOverrideSidebar />
-                </div>
+                <!-- Speed Override Sidebar -->
+                <SpeedOverrideSidebar />
             </div>
         </div>
     }

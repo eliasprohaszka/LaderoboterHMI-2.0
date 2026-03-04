@@ -1,64 +1,121 @@
-<!-- MaintenanceActionTile (exact match to MaintenanceActionTile.vue) -->
-<div class="maintenance-tile h-full w-full">
-    <button @onclick="HandleClick"
-            disabled="@(Disabled || IsLoading)"
-            class="w-full h-full font-semibold rounded-xl maintenance-btn disabled:opacity-50 disabled:cursor-not-allowed p-6 flex flex-col items-center justify-center space-y-4 @VariantClass">
+<!-- MaintenanceActionTile - Touch Optimized -->
+<button @onclick="HandleClick"
+        disabled="@(Disabled || IsLoading)"
+        class="action-tile-btn @VariantClass">
+    <div class="tile-icon-wrapper">
         @if (IsLoading)
         {
-            <div class="w-16 h-16 flex items-center justify-center">
-                <div class="spinner"></div>
-            </div>
+            <div class="spinner"></div>
         }
         else
         {
-            <Blazicon Svg="@Icon" class="w-16 h-16" />
+            <Blazicon Svg="@Icon" class="tile-icon" />
         }
-        <span class="text-base font-medium">@Label</span>
-        @if (!string.IsNullOrEmpty(Sublabel))
-        {
-            <span class="text-xs opacity-90">@Sublabel</span>
-        }
-    </button>
-</div>
+    </div>
+    <span class="tile-label">@Label</span>
+    @if (!string.IsNullOrEmpty(Sublabel))
+    {
+        <span class="tile-sublabel">@Sublabel</span>
+    }
+</button>
 
 <style>
-    .maintenance-tile {
-        min-height: 0;
-    }
-
-    .maintenance-btn {
-        transition: all 0.3s ease;
-        transform: translateY(0);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.3),
-            inset 0 1px 3px rgba(255, 255, 255, 0.15);
+    .action-tile-btn {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 1rem;
+        min-height: 80px;
+        border: none;
+        border-radius: 16px;
+        cursor: pointer;
         position: relative;
         overflow: hidden;
+        transition: transform 150ms ease, box-shadow 150ms ease;
     }
 
-    .maintenance-btn::before {
+    /* Glassmorphism base for primary variant */
+    .action-tile-btn.variant-primary {
+        background: linear-gradient(135deg, rgba(0, 85, 128, 0.9) 0%, rgba(0, 61, 92, 0.95) 100%);
+        color: white;
+        box-shadow: 0 4px 16px rgba(0, 61, 92, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .action-tile-btn.variant-secondary {
+        background: linear-gradient(135deg, rgba(100, 116, 139, 0.9) 0%, rgba(71, 85, 105, 0.95) 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .action-tile-btn.variant-danger {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.9) 0%, rgba(220, 38, 38, 0.95) 100%);
+        color: white;
+        box-shadow: 0 4px 16px rgba(220, 38, 38, 0.3),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    /* Subtle shine overlay */
+    .action-tile-btn::before {
         content: "";
         position: absolute;
         top: 0;
         left: 0;
         right: 0;
-        bottom: 0;
-        background: linear-gradient(
-            135deg,
-            rgba(255, 255, 255, 0.25) 0%,
-            transparent 40%,
-            rgba(0, 0, 0, 0.15) 100%
-        );
+        height: 50%;
+        background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.12) 0%,
+            rgba(255, 255, 255, 0) 100%);
         pointer-events: none;
+        border-radius: 16px 16px 0 0;
     }
 
-    .maintenance-btn:active:not(:disabled) {
-        transform: translateY(2px) scale(0.98);
+    /* Touch feedback */
+    .action-tile-btn:active:not(:disabled) {
+        transform: scale(0.97);
+    }
+
+    .action-tile-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+
+    .tile-icon-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+    }
+
+    .tile-icon {
+        width: 40px;
+        height: 40px;
+    }
+
+    .tile-label {
+        font-family: 'Outfit', sans-serif;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-align: center;
+        letter-spacing: 0.01em;
+    }
+
+    .tile-sublabel {
+        font-size: 0.75rem;
+        opacity: 0.85;
+        text-align: center;
     }
 
     .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(255, 255, 255, 0.3);
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
         border-top-color: white;
         border-radius: 50%;
         animation: spin 1s linear infinite;
@@ -82,9 +139,9 @@
 
     private string VariantClass => Variant switch
     {
-        "secondary" => "bg-gray-600 text-white",
-        "danger" => "bg-red-600 text-white",
-        _ => "bg-primary text-white"
+        "secondary" => "variant-secondary",
+        "danger" => "variant-danger",
+        _ => "variant-primary"
     };
 
     private async Task HandleClick()

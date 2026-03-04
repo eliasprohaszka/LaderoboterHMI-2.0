@@ -3,32 +3,29 @@
 @using static Laderoboter.UI.Components.Main.ShelfCard
 
 <!-- PaletteSection - Toggle between Palette and Shelf view -->
-<div class="flex flex-col h-full px-3 py-4">
+<div class="palette-section-container">
     <!-- View Toggle Header -->
-    <div class="flex justify-center mb-4">
-        <div class="inline-flex rounded-lg bg-gray-200 p-1">
-            <button class="px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 @(CurrentView == ViewMode.Palette ? "bg-white text-primary shadow-sm" : "text-gray-600 hover:text-gray-800")"
+    <div class="view-toggle-header">
+        <div class="view-toggle-group">
+            <button class="view-toggle-btn @(CurrentView == ViewMode.Palette ? "active" : "")"
                     @onclick="() => SetView(ViewMode.Palette)">
-                <span class="flex items-center gap-2">
-                    <Blazicon Svg="Lucide.LayoutGrid" class="w-4 h-4" />
-                    Paletten
-                </span>
+                <Blazicon Svg="Lucide.LayoutGrid" class="w-4 h-4" />
+                Paletten
             </button>
-            <button class="px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 @(CurrentView == ViewMode.Shelf ? "bg-white text-primary shadow-sm" : "text-gray-600 hover:text-gray-800")"
+            <button class="view-toggle-btn @(CurrentView == ViewMode.Shelf ? "active" : "")"
                     @onclick="() => SetView(ViewMode.Shelf)">
-                <span class="flex items-center gap-2">
-                    <Blazicon Svg="Lucide.Grid3x3" class="w-4 h-4" />
-                    Regal
-                </span>
+                <Blazicon Svg="Lucide.Grid3x3" class="w-4 h-4" />
+                Regal
             </button>
         </div>
     </div>
 
     <!-- Content Area -->
-    @if (CurrentView == ViewMode.Palette)
-    {
-        <!-- Palette View - Vertical layout: Palette 2 top, Palette 1 bottom -->
-        <div class="grid grid-rows-2 gap-6 flex-1 min-h-0">
+    <div class="palette-content-area">
+        @if (CurrentView == ViewMode.Palette)
+        {
+            <!-- Palette View - Vertical layout: Palette 2 top, Palette 1 bottom -->
+            <div class="palette-grid">
             <PaletteCard
                 PaletteId="2"
                 Title="Palette 2"
@@ -54,23 +51,24 @@
                 OnReset="@(() => OnPalette1Reset.InvokeAsync())"
                 OnToggleMode="@(() => OnPalette1ToggleMode.InvokeAsync())"
                 OnWorkpieceClick="OnWorkpieceClick" />
-        </div>
-    }
-    else
-    {
-        <!-- Shelf View - 7x4 Grid -->
-        <div class="flex-1 min-h-0">
-            <ShelfCard
-                Workpieces="@ShelfWorkpieces"
-                Mode="@ShelfMode"
-                IsInProgress="@ShelfInProgress"
-                ProgressStep="@ShelfProgressStep"
-                ShowProcessingIndicator="@ShelfShowProcessing"
-                OnReset="@(() => OnShelfReset.InvokeAsync())"
-                OnToggleMode="@(() => OnShelfToggleMode.InvokeAsync())"
-                OnWorkpieceClick="OnWorkpieceClick" />
-        </div>
-    }
+            </div>
+        }
+        else
+        {
+            <!-- Shelf View - 7x4 Grid -->
+            <div class="shelf-container">
+                <ShelfCard
+                    Workpieces="@ShelfWorkpieces"
+                    Mode="@ShelfMode"
+                    IsInProgress="@ShelfInProgress"
+                    ProgressStep="@ShelfProgressStep"
+                    ShowProcessingIndicator="@ShelfShowProcessing"
+                    OnReset="@(() => OnShelfReset.InvokeAsync())"
+                    OnToggleMode="@(() => OnShelfToggleMode.InvokeAsync())"
+                    OnWorkpieceClick="OnWorkpieceClick" />
+            </div>
+        }
+    </div>
 </div>
 
 @code {

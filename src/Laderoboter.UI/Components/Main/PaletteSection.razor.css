@@ -1,21 +1,88 @@
-/* PaletteSection - Zwei Paletten nebeneinander */
+/* ===========================================
+   PaletteSection - Touch Optimized Layout
+   Critical: Height must flow from parent through all children
+   =========================================== */
 
-.palette-section {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.5rem;
-    flex: 1;
-    min-height: 0;
-}
-
-.palette-section > * {
+/* Main container - MUST have explicit height from parent */
+.palette-section-container {
     display: flex;
     flex-direction: column;
     height: 100%;
+    width: 100%;
+    padding: 0.25rem;
+    overflow: hidden;
 }
 
-@media (max-width: 1280px) {
-    .palette-section {
-        grid-template-columns: 1fr;
-    }
+/* Toggle header - fixed height, doesn't grow */
+.view-toggle-header {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 0.25rem;
+    flex-shrink: 0;
+}
+
+.view-toggle-group {
+    display: inline-flex;
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 10px;
+    padding: 4px;
+}
+
+.view-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.35rem 0.75rem;
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 150ms ease;
+    min-height: 30px;
+}
+
+.view-toggle-btn:active {
+    transform: scale(0.97);
+}
+
+.view-toggle-btn.active {
+    background: white;
+    color: #003d5c;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Content area - takes ALL remaining height */
+.palette-content-area {
+    flex: 1 1 0%;
+    min-height: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+/* Two-row palette grid - MUST fill parent height */
+.palette-grid {
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 0.35rem;
+    height: 100%;
+    min-height: 0;
+    width: 100%;
+}
+
+/* Ensure grid children fill their cells */
+.palette-grid > * {
+    min-height: 0;
+    overflow: hidden;
+    height: 100%;
+}
+
+/* Shelf container - fills parent */
+.shelf-container {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
 }

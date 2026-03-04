@@ -3,78 +3,63 @@
 @inject ITranslationService T
 @implements IDisposable
 
-<!-- SpeedOverrideSidebar (exact match to SpeedOverrideSidebar.vue) -->
-<div class="speed-sidebar h-full flex flex-col metal-palette rounded-lg shadow-lg transition-all duration-300 overflow-hidden cursor-pointer @(IsCollapsed ? "w-12" : "w-64")"
+<!-- SpeedOverrideSidebar - Touch Optimized -->
+<div class="speed-sidebar glass-card @(IsCollapsed ? "collapsed" : "expanded")"
      @onclick="HandleSidebarClick">
 
     @if (IsCollapsed)
     {
-        <!-- Collapsed State - Vertical Text -->
-        <div class="flex-1 flex items-center justify-center">
-            <div class="vertical-text text-gray-900 font-semibold text-sm drop-shadow-sm">
+        <!-- Collapsed State - Vertical Text with Touch Target -->
+        <div class="collapsed-content">
+            <div class="vertical-text">
                 @T.Translate("speed.title")
             </div>
         </div>
     }
     else
     {
-        <!-- Expanded State - Header with Collapse Button -->
-        <div class="flex items-center justify-between p-3 border-b border-black/20 flex-shrink-0">
-            <div class="flex items-center space-x-2">
-                <Blazicon Svg="Lucide.Gauge" class="w-5 h-5 text-primary drop-shadow-sm" />
-                <h3 class="font-semibold text-sm text-gray-900 drop-shadow-sm">
-                    @T.Translate("speed.title")
-                </h3>
+        <!-- Expanded State -->
+        <div class="sidebar-header">
+            <div class="header-title">
+                <Blazicon Svg="Lucide.Gauge" class="header-icon" />
+                <h3>@T.Translate("speed.title")</h3>
             </div>
-            <button class="p-1.5 rounded-lg transition-all text-gray-900"
+            <button class="collapse-btn robot-control-btn btn-icon"
                     @onclick="ToggleCollapse"
                     @onclick:stopPropagation="true"
                     title="@T.Translate("speed.collapse")">
-                <Blazicon Svg="Lucide.ChevronRight" class="w-4 h-4" />
+                <Blazicon Svg="Lucide.ChevronRight" class="w-5 h-5" />
             </button>
         </div>
 
         <!-- Content -->
-        <div class="flex-1 flex flex-col overflow-hidden">
+        <div class="sidebar-content">
             <!-- Info Text -->
-            <div class="px-3 py-2 text-xs text-gray-800 bg-black/5 border-b border-black/10 flex-shrink-0">
+            <div class="sidebar-info">
                 @T.Translate("speed.description")
             </div>
 
-            <!-- Scrollable Content Area -->
-            <div class="flex-1 overflow-y-auto overflow-x-hidden p-3 custom-scrollbar flex flex-col justify-center">
-                <div class="w-full flex flex-col items-center">
-                    <!-- Value Display -->
-                    <div class="mb-2 text-center">
-                        <div class="text-3xl font-bold text-gray-700 tabular-nums">
-                            @SpeedValue<span class="text-xl">%</span>
-                        </div>
-                    </div>
+            <!-- Speed Control Area -->
+            <div class="speed-control">
+                <!-- SpeedGauge Component -->
+                <div class="gauge-wrapper">
+                    <SpeedGauge Value="@SpeedValue"
+                                ValueChanged="OnGaugeValueChanged"
+                                Disabled="@(!IsConnected || IsUpdating)"
+                                Step="5" />
+                </div>
 
-                    <!-- Control Slider -->
-                    <div class="mb-3 w-full px-4">
-                        <input type="range"
-                               class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-primary"
-                               min="0"
-                               max="100"
-                               step="1"
-                               value="@SpeedValue"
-                               disabled="@(!IsConnected || IsUpdating)"
-                               @oninput="OnSpeedInput" />
-                    </div>
-
-                    <!-- Quick Preset Buttons -->
-                    <div class="grid grid-cols-4 gap-1.5 w-full max-w-[220px]">
-                        @foreach (var preset in Presets)
-                        {
-                            <button class="px-2 py-1.5 text-xs font-medium rounded-lg transition-all robot-control-btn @(SpeedValue == preset ? "bg-gray-700 text-white" : "bg-white/20 text-gray-700")"
-                                    @onclick="() => SetPreset(preset)"
-                                    @onclick:stopPropagation="true"
-                                    disabled="@(!IsConnected || IsUpdating)">
-                                @preset%
-                            </button>
-                        }
-                    </div>
+                <!-- Large Preset Buttons - Touch Optimized -->
+                <div class="preset-grid">
+                    @foreach (var preset in Presets)
+                    {
+                        <button class="preset-btn @(SpeedValue == preset ? "active" : "")"
+                                @onclick="() => SetPreset(preset)"
+                                @onclick:stopPropagation="true"
+                                disabled="@(!IsConnected || IsUpdating)">
+                            @preset%
+                        </button>
+                    }
                 </div>
             </div>
         </div>
@@ -82,34 +67,228 @@
 </div>
 
 <style>
+    .speed-sidebar {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transition: width 250ms ease;
+        cursor: pointer;
+    }
+
+    .speed-sidebar.collapsed {
+        width: 56px;
+    }
+
+    .speed-sidebar.expanded {
+        width: 280px;
+        cursor: default;
+    }
+
+    /* Collapsed state */
+    .collapsed-content {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 0;
+    }
+
     .vertical-text {
         writing-mode: vertical-rl;
         text-orientation: mixed;
         transform: rotate(180deg);
         white-space: nowrap;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.1em;
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #1e293b;
     }
 
-    .custom-scrollbar {
-        scrollbar-width: thin;
-        scrollbar-color: rgba(0, 0, 0, 0.3) transparent;
+    /* Header */
+    .sidebar-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        background: rgba(255, 255, 255, 0.3);
     }
 
-    .custom-scrollbar::-webkit-scrollbar {
-        width: 6px;
+    .header-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 
-    .custom-scrollbar::-webkit-scrollbar-track {
-        background: transparent;
+    .header-title h3 {
+        font-family: 'Outfit', sans-serif;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #1e293b;
+        margin: 0;
     }
 
-    .custom-scrollbar::-webkit-scrollbar-thumb {
-        background-color: rgba(0, 0, 0, 0.3);
-        border-radius: 3px;
+    .header-icon {
+        width: 20px;
+        height: 20px;
+        color: #003d5c;
     }
 
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-        background-color: rgba(0, 0, 0, 0.4);
+    .collapse-btn {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+        padding: 0 !important;
+        background: rgba(0, 0, 0, 0.05) !important;
+        box-shadow: none !important;
+    }
+
+    /* Content */
+    .sidebar-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .sidebar-info {
+        padding: 0.75rem 1rem;
+        font-size: 0.8rem;
+        color: #64748b;
+        background: rgba(0, 0, 0, 0.03);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    }
+
+    /* Speed control area */
+    .speed-control {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: stretch;
+        padding: 1rem;
+        gap: 1rem;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    /* Wrapper for the gauge to fill available space */
+    .gauge-wrapper {
+        flex: 1;
+        width: 100%;
+        min-height: 120px;
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+    }
+
+    /* Large value display */
+    .speed-display {
+        text-align: center;
+    }
+
+    .speed-value {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 3rem;
+        font-weight: 700;
+        color: #1e293b;
+        letter-spacing: -0.02em;
+    }
+
+    .speed-unit {
+        font-family: 'Outfit', sans-serif;
+        font-size: 1.5rem;
+        font-weight: 500;
+        color: #64748b;
+    }
+
+    /* Slider container */
+    .slider-container {
+        width: 100%;
+        padding: 0 0.5rem;
+    }
+
+    .speed-slider {
+        width: 100%;
+        height: 12px;
+        -webkit-appearance: none;
+        appearance: none;
+        background: #e2e8f0;
+        border-radius: 6px;
+        outline: none;
+        cursor: pointer;
+    }
+
+    .speed-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #005580 0%, #003d5c 100%);
+        box-shadow: 0 4px 12px rgba(0, 61, 92, 0.3);
+        cursor: pointer;
+        transition: transform 150ms ease;
+    }
+
+    .speed-slider::-webkit-slider-thumb:active {
+        transform: scale(1.1);
+    }
+
+    .speed-slider::-moz-range-thumb {
+        width: 36px;
+        height: 36px;
+        border: none;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #005580 0%, #003d5c 100%);
+        box-shadow: 0 4px 12px rgba(0, 61, 92, 0.3);
+        cursor: pointer;
+    }
+
+    .speed-slider:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    /* Preset buttons - Touch Optimized */
+    .preset-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .preset-btn {
+        min-height: 48px;
+        padding: 0.75rem 0.5rem;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #475569;
+        background: rgba(255, 255, 255, 0.6);
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 150ms ease;
+    }
+
+    .preset-btn:active:not(:disabled) {
+        transform: scale(0.95);
+    }
+
+    .preset-btn.active {
+        background: linear-gradient(135deg, #005580 0%, #003d5c 100%);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 4px 12px rgba(0, 61, 92, 0.3);
+    }
+
+    .preset-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
     }
 </style>
 
@@ -175,6 +354,12 @@
             SpeedValue = newValue;
             await ApplySpeed();
         }
+    }
+
+    private async Task OnGaugeValueChanged(int newValue)
+    {
+        SpeedValue = newValue;
+        await ApplySpeed();
     }
 
     private async Task ApplySpeed()

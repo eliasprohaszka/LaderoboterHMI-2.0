@@ -20,31 +20,42 @@
                         <p class="text-sm text-gray-600 mt-1">@T.Translate("settings.description")</p>
                     </div>
                 </div>
-                <div class="flex gap-3">
+                <div class="flex items-center gap-2">
                     <button
-                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center"
+                        class="p-2 rounded-lg text-white transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center justify-center"
+                        title="@T.Translate("common.save")"
                         @onclick="SaveAllSettings">
-                        <Blazicon Svg="Lucide.Save" class="w-4 h-4 mr-2" />
-                        @T.Translate("common.save")
+                        <Blazicon Svg="Lucide.Save" class="w-5 h-5" />
                     </button>
                     <button
-                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-gray-600 flex items-center"
+                        class="p-2 rounded-lg text-white transition-all duration-200 robot-control-btn shadow-lg bg-gray-600 flex items-center justify-center"
+                        title="@T.Translate("common.reset")"
                         @onclick="ResetAllSettings">
-                        <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4 mr-2" />
-                        @T.Translate("common.reset")
+                        <Blazicon Svg="Lucide.RotateCcw" class="w-5 h-5" />
                     </button>
-                    <button
-                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center"
-                        @onclick="ExportSettings">
-                        <Blazicon Svg="Lucide.Download" class="w-4 h-4 mr-2" />
-                        @T.Translate("settings.export")
-                    </button>
-                    <button
-                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center"
-                        @onclick="ImportSettings">
-                        <Blazicon Svg="Lucide.Upload" class="w-4 h-4 mr-2" />
-                        @T.Translate("settings.import")
-                    </button>
+                    <ActionDropdown @ref="actionsDropdown">
+                        <button class="dropdown-item" @onclick="ExportAndClose">
+                            <Blazicon Svg="Lucide.Download" class="dropdown-item-icon" />
+                            <span>@T.Translate("settings.export")</span>
+                        </button>
+                        <button class="dropdown-item" @onclick="ImportAndClose">
+                            <Blazicon Svg="Lucide.Upload" class="dropdown-item-icon" />
+                            <span>@T.Translate("settings.import")</span>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" @onclick="NavigateToTranslationsAndClose">
+                            <Blazicon Svg="Lucide.Globe" class="dropdown-item-icon" />
+                            <span>@T.Translate("settings.language.manageTranslations")</span>
+                        </button>
+                        <button class="dropdown-item" @onclick="NavigateToUsersAndClose">
+                            <Blazicon Svg="Lucide.Users" class="dropdown-item-icon" />
+                            <span>@T.Translate("users.title")</span>
+                        </button>
+                        <button class="dropdown-item" @onclick="NavigateToActionLogAndClose">
+                            <Blazicon Svg="Lucide.ScrollText" class="dropdown-item-icon" />
+                            <span>@T.Translate("actionLog.title")</span>
+                        </button>
+                    </ActionDropdown>
                 </div>
             </div>
         </div>
@@ -137,26 +148,6 @@
                             </select>
                         </div>
 
-                        <button
-                            class="w-full px-4 py-3 rounded-lg robot-control-btn bg-primary text-white flex items-center justify-center space-x-2"
-                            @onclick="NavigateToTranslations">
-                            <Blazicon Svg="Lucide.Globe" class="w-5 h-5" />
-                            <span>@T.Translate("settings.language.manageTranslations")</span>
-                        </button>
-
-                        <button
-                            class="w-full px-4 py-3 rounded-lg robot-control-btn bg-primary text-white flex items-center justify-center space-x-2"
-                            @onclick="NavigateToUsers">
-                            <Blazicon Svg="Lucide.Users" class="w-5 h-5" />
-                            <span>@T.Translate("users.title")</span>
-                        </button>
-
-                        <button
-                            class="w-full px-4 py-3 rounded-lg robot-control-btn bg-primary text-white flex items-center justify-center space-x-2"
-                            @onclick="NavigateToActionLog">
-                            <Blazicon Svg="Lucide.ScrollText" class="w-5 h-5" />
-                            <span>@T.Translate("actionLog.title")</span>
-                        </button>
                     </div>
                 </div>
             </div>
@@ -165,6 +156,9 @@
 </div>
 
 @code {
+    // Components
+    private ActionDropdown? actionsDropdown;
+
     // Robot settings
     private string robotIp = "192.168.1.1";
     private string roboGuidePath = "";
@@ -240,6 +234,30 @@
         // TODO: Implement import
     }
 
+    private async Task SaveAndClose()
+    {
+        await SaveAllSettings();
+        actionsDropdown?.Close();
+    }
+
+    private async Task ResetAndClose()
+    {
+        await ResetAllSettings();
+        actionsDropdown?.Close();
+    }
+
+    private void ExportAndClose()
+    {
+        ExportSettings();
+        actionsDropdown?.Close();
+    }
+
+    private void ImportAndClose()
+    {
+        ImportSettings();
+        actionsDropdown?.Close();
+    }
+
     private void NavigateToTranslations()
     {
         Navigation.NavigateTo("/translations");
@@ -253,6 +271,24 @@
     private void NavigateToActionLog()
     {
         Navigation.NavigateTo("/actionlog");
+    }
+
+    private void NavigateToTranslationsAndClose()
+    {
+        actionsDropdown?.Close();
+        NavigateToTranslations();
+    }
+
+    private void NavigateToUsersAndClose()
+    {
+        actionsDropdown?.Close();
+        NavigateToUsers();
+    }
+
+    private void NavigateToActionLogAndClose()
+    {
+        actionsDropdown?.Close();
+        NavigateToActionLog();
     }
 
     public void Dispose()

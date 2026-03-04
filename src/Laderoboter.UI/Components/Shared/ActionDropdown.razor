@@ -1,0 +1,46 @@
+@using Blazicons
+
+<div class="relative">
+    <!-- Trigger Button -->
+    <button
+        class="p-2 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center justify-center"
+        @onclick="ToggleMenu"
+        @onclick:stopPropagation="true">
+        <Blazicon Svg="@(isOpen ? Lucide.Ellipsis : Lucide.EllipsisVertical)" class="w-5 h-5" />
+    </button>
+
+    <!-- Dropdown Menu -->
+    @if (isOpen)
+    {
+        <!-- Backdrop -->
+        <div class="fixed inset-0 z-40" @onclick="CloseMenu"></div>
+
+        <!-- Menu -->
+        <div class="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden min-w-[200px] z-50">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool isOpen = false;
+
+    private void ToggleMenu()
+    {
+        isOpen = !isOpen;
+    }
+
+    private void CloseMenu()
+    {
+        isOpen = false;
+    }
+
+    public void Close()
+    {
+        isOpen = false;
+        StateHasChanged();
+    }
+}

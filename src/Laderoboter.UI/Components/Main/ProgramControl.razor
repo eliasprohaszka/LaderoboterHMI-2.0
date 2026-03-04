@@ -2,60 +2,70 @@
 @inject ITranslationService T
 @implements IDisposable
 
-<!-- Control Buttons - Vertical layout: two columns -->
-<div class="flex flex-row gap-4">
-    <!-- Left column: Autostart, Autostop, Pause -->
-    <div class="flex flex-col gap-3 flex-1">
-        <!-- Autostart Button -->
-        <button @onclick="StartMainProgram"
-                disabled="@(!RobotService.IsConnected || IsMainProgramRunning)"
-                class="@GetAutostartButtonClass()">
-            <Blazicon Svg="Lucide.Play" class="w-6 h-6 mr-3" />
+<!-- Control Buttons - Touch Optimized Grid -->
+<div class="control-grid">
+    <!-- Autostart Button - Large and prominent -->
+    <button @onclick="StartMainProgram"
+            disabled="@(!RobotService.IsConnected || IsMainProgramRunning)"
+            class="control-btn @GetAutostartButtonClass()">
+        <div class="control-btn-icon">
+            <Blazicon Svg="Lucide.Play" class="w-7 h-7" />
+        </div>
+        <span class="control-btn-label">
             @(IsMainProgramRunning ? T.Translate("program.running") : T.Translate("program.autostart"))
-        </button>
+        </span>
+    </button>
 
-        <!-- Autostop Button -->
-        <button @onclick="AutostopProgram"
-                disabled="@(!RobotService.IsConnected || !IsMainProgramRunning)"
-                class="@GetAutostopButtonClass()">
-            <Blazicon Svg="Lucide.Square" class="w-6 h-6 mr-3" />
+    <!-- Stop Button - High visibility -->
+    <button @onclick="StopCurrentProgram"
+            disabled="@(!RobotService.IsConnected)"
+            class="control-btn robot-control-btn btn-red">
+        <div class="control-btn-icon">
+            <Blazicon Svg="Lucide.Square" class="w-7 h-7" />
+        </div>
+        <span class="control-btn-label">@T.Translate("program.stop")</span>
+    </button>
+
+    <!-- Autostop Button -->
+    <button @onclick="AutostopProgram"
+            disabled="@(!RobotService.IsConnected || !IsMainProgramRunning)"
+            class="control-btn @GetAutostopButtonClass()">
+        <div class="control-btn-icon">
+            <Blazicon Svg="Lucide.CircleStop" class="w-7 h-7" />
+        </div>
+        <span class="control-btn-label">
             @(IsAutostopActive ? T.Translate("program.stopping") : T.Translate("program.autostop"))
-        </button>
+        </span>
+    </button>
 
-        <!-- Pause Button -->
-        <button @onclick="PauseCurrentProgram"
-                disabled="@(!RobotService.IsConnected || !IsMainProgramRunning)"
-                class="px-6 py-3 bg-orange-500 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
+    <!-- Pause/Resume Button -->
+    <button @onclick="PauseCurrentProgram"
+            disabled="@(!RobotService.IsConnected || !IsMainProgramRunning)"
+            class="control-btn robot-control-btn btn-orange">
+        <div class="control-btn-icon">
             @if (IsProgramPaused)
             {
-                <Blazicon Svg="Lucide.Play" class="w-6 h-6 mr-3" />
+                <Blazicon Svg="Lucide.Play" class="w-7 h-7" />
             }
             else
             {
-                <Blazicon Svg="Lucide.Pause" class="w-6 h-6 mr-3" />
+                <Blazicon Svg="Lucide.Pause" class="w-7 h-7" />
             }
+        </div>
+        <span class="control-btn-label">
             @(IsProgramPaused ? T.Translate("program.resume") : T.Translate("program.pause"))
-        </button>
-    </div>
+        </span>
+    </button>
 
-    <!-- Right column: Stop, Reset -->
-    <div class="flex flex-col gap-3 flex-1">
-        <!-- Stop Button -->
-        <button @onclick="StopCurrentProgram"
-                disabled="@(!RobotService.IsConnected)"
-                class="px-6 py-3 bg-red-600 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
-            <Blazicon Svg="Lucide.Square" class="w-6 h-6 mr-3" />
-            @T.Translate("program.stop")
-        </button>
-
-        <!-- Reset Button -->
-        <button @onclick="ResetSystem"
-                disabled="@(!RobotService.IsConnected)"
-                class="px-6 py-3 bg-gray-600 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed">
-            <Blazicon Svg="Lucide.RotateCcw" class="w-6 h-6 mr-3" />
-            @T.Translate("program.reset")
-        </button>
-    </div>
+    <!-- Reset Button -->
+    <button @onclick="ResetSystem"
+            disabled="@(!RobotService.IsConnected)"
+            class="control-btn robot-control-btn btn-gray control-btn-span-2">
+        <div class="control-btn-icon">
+            <Blazicon Svg="Lucide.RotateCcw" class="w-7 h-7" />
+        </div>
+        <span class="control-btn-label">@T.Translate("program.reset")</span>
+    </button>
 </div>
 
 @code {
@@ -77,18 +87,16 @@
 
     private string GetAutostartButtonClass()
     {
-        var baseClass = "px-6 py-3 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed";
         return IsMainProgramRunning
-            ? $"{baseClass} bg-green-600 pulse-green"
-            : $"{baseClass} bg-green-600";
+            ? "robot-control-btn btn-green pulse-green"
+            : "robot-control-btn btn-green";
     }
 
     private string GetAutostopButtonClass()
     {
-        var baseClass = "px-6 py-3 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 disabled:cursor-not-allowed";
         return IsAutostopActive
-            ? $"{baseClass} bg-yellow-600 pulse-yellow"
-            : $"{baseClass} bg-yellow-600";
+            ? "robot-control-btn btn-yellow pulse-yellow"
+            : "robot-control-btn btn-yellow";
     }
 
     private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)

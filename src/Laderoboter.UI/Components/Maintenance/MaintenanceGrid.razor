@@ -1,11 +1,23 @@
-<!-- MaintenanceGrid - Vertical layout optimized -->
-<div class="maintenance-grid grid grid-cols-2 gap-4 h-full max-h-full">
+<!-- MaintenanceGrid - Touch Optimized Layout -->
+<div class="maintenance-grid">
     @ChildContent
 </div>
 
 <style>
     .maintenance-grid {
+        --grid-gap: 0.75rem;
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
         grid-template-rows: repeat(5, 1fr);
+        gap: var(--grid-gap);
+        height: 100%;
+        max-height: 100%;
+    }
+
+    /* Ensure all grid items stretch to fill their cell */
+    .maintenance-grid > * {
+        min-height: 0;
+        height: 100%;
     }
 </style>
 

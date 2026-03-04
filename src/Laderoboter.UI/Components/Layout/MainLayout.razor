@@ -20,11 +20,9 @@ else
             <AppHeader />
         </div>
 
-        <!-- Main Content Area - z-30 to stay below header (z-40) -->
-        <main class="absolute inset-0 pt-24 pb-14 overflow-y-auto z-30">
-            <div class="max-w-8xl mx-auto p-6 h-full">
-                @Body
-            </div>
+        <!-- Main Content Area - Flexbox ensures proper height calculation -->
+        <main class="main-content-area">
+            @Body
         </main>
 
         <!-- Footer - Fixed at bottom -->

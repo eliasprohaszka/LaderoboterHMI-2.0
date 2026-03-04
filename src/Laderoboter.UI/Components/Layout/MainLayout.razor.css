@@ -1,3 +1,25 @@
+/* ===========================================
+   MainLayout - Full Height Layout System
+   =========================================== */
+
+/* Main content area - positioned between header and footer */
+.main-content-area {
+    position: absolute;
+    top: 64px;      /* Header height */
+    left: 0;
+    right: 0;
+    bottom: 48px;   /* Footer height */
+    overflow: hidden;
+    z-index: 30;
+    padding: 0.75rem;
+}
+
+/* Ensure children can use full height */
+.main-content-area > * {
+    height: 100%;
+}
+
+/* Legacy styles - kept for compatibility */
 .app-container {
     display: flex;
     flex-direction: column;

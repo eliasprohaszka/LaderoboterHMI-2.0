@@ -1,54 +1,57 @@
 @using Laderoboter.Core.Models
 @inject ITranslationService T
 
-<!-- PaletteCard (exact match to PaletteCard.vue) -->
-<div class="metal-palette border-l-4 border-primary h-full flex flex-col rounded-xl overflow-hidden">
-    <!-- CardHeader -->
-    <div class="p-4">
+<!-- PaletteCard - Touch Optimized with Glassmorphism -->
+<div class="palette-card glass-card h-full flex flex-col">
+    <!-- CardHeader - Touch friendly -->
+    <div class="palette-header">
         <div class="flex justify-between items-center">
-            <h3 class="text-xl font-semibold">@Title</h3>
-            <div class="flex items-center space-x-2">
+            <div class="flex items-center gap-3">
+                <div class="palette-indicator @(Mode == PaletteMode.Change ? "mode-change" : "mode-active")"></div>
+                <h3 class="palette-title">@Title</h3>
+            </div>
+            <div class="flex items-center gap-3">
                 @if (Mode == PaletteMode.Change)
                 {
-                    <button class="p-3 h-10 w-10 bg-gray-600 text-white font-semibold rounded-lg robot-control-btn flex items-center justify-center"
+                    <button class="robot-control-btn btn-icon btn-gray"
                             @onclick="OnResetClick"
                             title="@T.Translate("palette.resetAll")">
-                        <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4" />
+                        <Blazicon Svg="Lucide.RotateCcw" class="w-5 h-5" />
                     </button>
                 }
-                <button class="p-3 h-10 w-10 text-white font-semibold rounded-lg robot-control-btn disabled:opacity-50 flex items-center justify-center @(Mode == PaletteMode.Change ? "bg-green-600" : "bg-gray-600")"
+                <button class="robot-control-btn btn-icon @(Mode == PaletteMode.Change ? "btn-green" : "btn-gray")"
                         @onclick="OnToggleModeClick"
                         disabled="@IsInProgress"
                         title="@ModeToggleTitle">
                     @if (IsInProgress)
                     {
-                        <span class="spinner w-4 h-4"></span>
+                        <span class="spinner w-5 h-5"></span>
                     }
                     else if (Mode == PaletteMode.Active)
                     {
-                        <Blazicon Svg="Lucide.ArrowUpDown" class="w-5 h-5" />
+                        <Blazicon Svg="Lucide.ArrowUpDown" class="w-6 h-6" />
                     }
                     else
                     {
-                        <Blazicon Svg="Lucide.Check" class="w-5 h-5" />
+                        <Blazicon Svg="Lucide.Check" class="w-6 h-6" />
                     }
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- CardContent -->
-    <div class="p-3 flex-1 relative min-h-0 overflow-hidden">
+    <!-- CardContent - Workpiece Grid -->
+    <div class="palette-content">
         <!-- Status Change Processing Indicator -->
         @if (ShowProcessingIndicator)
         {
-            <div class="absolute top-2 right-2 z-10 bg-blue-600 text-white text-xs px-2 py-1 rounded-lg flex items-center space-x-1">
-                <span class="spinner w-3 h-3"></span>
+            <div class="processing-banner">
+                <span class="spinner w-4 h-4"></span>
                 <span>@T.Translate("palette.changesBeingProcessed")</span>
             </div>
         }
 
-        <div class="grid grid-cols-2 grid-rows-4 gap-2 h-full">
+        <div class="workpiece-grid">
             @* Layout: 2 columns, 4 rows
                Left column (top to bottom): P-4, P-3, P-2, P-1
                Right column (top to bottom): P-8, P-7, P-6, P-5 *@

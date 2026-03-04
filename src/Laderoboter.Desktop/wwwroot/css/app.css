@@ -1,22 +1,30 @@
 /* ===========================================
-   Laderoboter HMI - Base Styles
-   Identisch zur ursprünglichen Vue/Nuxt App
+   Laderoboter HMI - Touch-Optimized Design
+   Industrial HMI with Subtle Glassmorphism
    =========================================== */
+
+/* Import distinctive fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 /* CSS Reset & Base */
 *, *::before, *::after {
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 html, body {
     margin: 0;
     padding: 0;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    font-size: 14px;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 16px;
     line-height: 1.5;
-    color: #2d3748;
-    background-color: #f2f2f2;
+    color: #1a2332;
+    background: linear-gradient(135deg, #e8eef5 0%, #dce4ed 50%, #d0dae6 100%);
     height: 100%;
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 #app, .app {
@@ -25,7 +33,9 @@ html, body {
 
 h1, h2, h3, h4, h5, h6 {
     margin: 0;
-    font-weight: 600;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
 }
 
 p {
@@ -33,67 +43,156 @@ p {
 }
 
 /* ===========================================
-   Color Variables (wie Tailwind config)
+   Design System - Touch-Optimized Variables
    =========================================== */
 :root {
-    --color-primary: #004F7C;
-    --color-primary-light: #0066a3;
-    --color-success: #22c55e;
-    --color-success-hover: #16a34a;
+    /* Primary Brand Colors - FANUC Industrial Blue */
+    --color-primary: #003d5c;
+    --color-primary-light: #005580;
+    --color-primary-dark: #002a40;
+    --color-primary-glow: rgba(0, 85, 128, 0.3);
+
+    /* Status Colors - High Contrast for Industrial */
+    --color-success: #10b981;
+    --color-success-glow: rgba(16, 185, 129, 0.25);
     --color-error: #ef4444;
-    --color-error-hover: #dc2626;
-    --color-processing: #f59e0b;
-    --color-processing-hover: #d97706;
-    --color-warning: #ca8a04;
-    --color-gray-600: #4b5563;
-    --color-gray-700: #374151;
-    --color-bg: #f2f2f2;
+    --color-error-glow: rgba(239, 68, 68, 0.25);
+    --color-warning: #f59e0b;
+    --color-warning-glow: rgba(245, 158, 11, 0.25);
+    --color-processing: #f97316;
+    --color-processing-glow: rgba(249, 115, 22, 0.25);
+
+    /* Neutral Palette */
+    --color-gray-50: #f8fafc;
+    --color-gray-100: #f1f5f9;
+    --color-gray-200: #e2e8f0;
+    --color-gray-300: #cbd5e1;
+    --color-gray-400: #94a3b8;
+    --color-gray-500: #64748b;
+    --color-gray-600: #475569;
+    --color-gray-700: #334155;
+    --color-gray-800: #1e293b;
+    --color-gray-900: #0f172a;
+
+    /* Glassmorphism - Subtle, not extreme */
+    --glass-bg: rgba(255, 255, 255, 0.65);
+    --glass-bg-light: rgba(255, 255, 255, 0.45);
+    --glass-bg-dark: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 8px 32px rgba(0, 61, 92, 0.12);
+    --glass-blur: blur(12px);
+
+    /* Touch Target Sizes (optimized for compact industrial HMI) */
+    --touch-target-min: 40px;
+    --touch-target-comfortable: 48px;
+    --touch-target-large: 56px;
+
+    /* Spacing Scale */
+    --space-xs: 4px;
+    --space-sm: 8px;
+    --space-md: 16px;
+    --space-lg: 24px;
+    --space-xl: 32px;
+    --space-2xl: 48px;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ===========================================
-   Metal Palette Style (Hauptdesign-Element)
+   Glass Card Style - Subtle Glassmorphism
    =========================================== */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.glass-card-dark {
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow);
+}
+
+/* Legacy support - metal-palette now uses glass styling */
 .metal-palette {
-    background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 50%, #6b7280 100%);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.25),
-                inset 0 2px 6px rgba(255, 255, 255, 0.4),
-                inset 0 -2px 6px rgba(0, 0, 0, 0.3);
-    border: none !important;
-    border-radius: 12px;
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--glass-shadow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.6);
     overflow: hidden;
 }
 
 /* ===========================================
-   Robot Control Buttons (3D Effect)
+   Touch-Optimized Control Buttons
+   Minimum 48px touch targets with clear feedback
    =========================================== */
 .robot-control-btn {
-    transition: all 0.3s ease;
-    transform: translateY(0);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4),
-                0 4px 8px rgba(0, 0, 0, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
-    position: relative;
-    overflow: hidden;
-    display: flex;
+    /* Touch-friendly sizing */
+    min-height: var(--touch-target-min);
+    min-width: var(--touch-target-min);
+    padding: var(--space-md) var(--space-lg);
+
+    /* Visual styling */
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    letter-spacing: 0.01em;
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+
+    /* Layout */
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    border: none;
-    cursor: pointer;
+    gap: var(--space-sm);
+    position: relative;
+    overflow: hidden;
+
+    /* Smooth transitions */
+    transition: transform var(--transition-fast),
+                box-shadow var(--transition-fast),
+                background-color var(--transition-fast);
+
+    /* Default shadow */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
+/* Subtle shine overlay */
 .robot-control-btn::before {
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg,
-        rgba(255, 255, 255, 0.25) 0%,
-        transparent 40%,
-        rgba(0, 0, 0, 0.15) 100%);
+    height: 50%;
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.15) 0%,
+        rgba(255, 255, 255, 0) 100%);
     pointer-events: none;
-    z-index: 0;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
 
 .robot-control-btn > * {
@@ -101,211 +200,283 @@ p {
     z-index: 2;
 }
 
+/* Touch feedback - immediate response */
 .robot-control-btn:active:not(:disabled) {
-    transform: translateY(2px) scale(0.98);
+    transform: scale(0.96);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2),
+                inset 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .robot-control-btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
+    transform: none !important;
 }
 
-/* Green Button */
-.robot-control-btn.btn-green {
-    background-color: rgb(22, 163, 74);
-    color: white;
-    box-shadow: 0 8px 16px rgba(22, 163, 74, 0.4),
-                0 4px 8px rgba(22, 163, 74, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+/* Green Button - Start/Success */
+.robot-control-btn.btn-green,
+.btn-green {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 16px var(--color-success-glow),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Yellow/Autostop Button */
-.robot-control-btn.btn-yellow {
-    background-color: rgb(202, 138, 4);
-    color: white;
-    box-shadow: 0 8px 16px rgba(163, 142, 22, 0.4),
-                0 4px 8px rgba(163, 142, 22, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+.robot-control-btn.btn-green:active:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
 }
 
-/* Orange/Pause Button */
-.robot-control-btn.btn-orange {
-    background-color: rgb(249, 115, 22);
-    color: white;
-    box-shadow: 0 8px 16px rgba(249, 115, 22, 0.4),
-                0 4px 8px rgba(249, 115, 22, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+/* Yellow Button - Warning/Autostop */
+.robot-control-btn.btn-yellow,
+.btn-yellow {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 4px 16px var(--color-warning-glow),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Red/Stop Button */
-.robot-control-btn.btn-red {
-    background-color: rgb(220, 38, 38);
-    color: white;
-    box-shadow: 0 8px 16px rgba(220, 38, 38, 0.4),
-                0 4px 8px rgba(220, 38, 38, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+/* Orange Button - Processing/Pause */
+.robot-control-btn.btn-orange,
+.btn-orange {
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    box-shadow: 0 4px 16px var(--color-processing-glow),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Gray/Reset Button */
-.robot-control-btn.btn-gray {
-    background-color: rgb(75, 85, 99);
-    color: white;
-    box-shadow: 0 8px 16px rgba(75, 85, 99, 0.4),
-                0 4px 8px rgba(75, 85, 99, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+/* Red Button - Stop/Emergency */
+.robot-control-btn.btn-red,
+.btn-red {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 4px 16px var(--color-error-glow),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* Primary Button */
-.robot-control-btn.btn-primary {
-    background-color: var(--color-primary);
-    color: white;
-    box-shadow: 0 8px 16px rgba(0, 79, 124, 0.4),
-                0 4px 8px rgba(0, 79, 124, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+/* Gray Button - Reset/Secondary */
+.robot-control-btn.btn-gray,
+.btn-gray {
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    box-shadow: 0 4px 12px rgba(71, 85, 105, 0.25),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+/* Primary Button - Brand */
+.robot-control-btn.btn-primary,
+.btn-primary {
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+    box-shadow: 0 4px 16px var(--color-primary-glow),
+                0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Icon-only button variant */
+.robot-control-btn.btn-icon {
+    width: var(--touch-target-min);
+    height: var(--touch-target-min);
+    padding: 0;
+    border-radius: var(--radius-md);
+}
+
+.robot-control-btn.btn-icon-lg {
+    width: var(--touch-target-comfortable);
+    height: var(--touch-target-comfortable);
+    padding: 0;
+    border-radius: var(--radius-md);
+}
+
+/* Large touch button for important actions */
+.robot-control-btn.btn-large {
+    min-height: var(--touch-target-large);
+    padding: var(--space-lg) var(--space-xl);
+    font-size: 1.125rem;
 }
 
 /* ===========================================
-   Pulse Animations
+   Status Animations - Smooth and Professional
    =========================================== */
 @keyframes pulse-green {
     0%, 100% {
-        background-color: rgb(22, 163, 74);
-        box-shadow: 0 8px 16px rgba(22, 163, 74, 0.4),
-                    0 4px 8px rgba(22, 163, 74, 0.3),
-                    inset 0 1px 3px rgba(255, 255, 255, 0.15),
-                    0 0 0 0 rgba(22, 163, 74, 0.7);
+        box-shadow: 0 4px 16px var(--color-success-glow),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                    0 0 0 0 rgba(16, 185, 129, 0.4);
     }
     50% {
-        background-color: rgb(34, 197, 94);
-        box-shadow: 0 12px 24px rgba(22, 163, 74, 0.6),
-                    0 8px 16px rgba(22, 163, 74, 0.5),
-                    inset 0 1px 3px rgba(255, 255, 255, 0.2),
-                    0 0 0 8px rgba(22, 163, 74, 0);
+        box-shadow: 0 4px 20px var(--color-success-glow),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                    0 0 0 8px rgba(16, 185, 129, 0);
     }
 }
 
 .pulse-green {
-    animation: pulse-green 2s infinite;
+    animation: pulse-green 2s ease-in-out infinite;
 }
 
 @keyframes pulse-yellow {
     0%, 100% {
-        background-color: rgb(202, 138, 4);
-        box-shadow: 0 8px 16px rgba(202, 138, 4, 0.4),
-                    0 4px 8px rgba(202, 138, 4, 0.3),
-                    inset 0 1px 3px rgba(255, 255, 255, 0.15),
-                    0 0 0 0 rgba(202, 138, 4, 0.7);
+        box-shadow: 0 4px 16px var(--color-warning-glow),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                    0 0 0 0 rgba(245, 158, 11, 0.4);
     }
     50% {
-        background-color: rgb(234, 179, 8);
-        box-shadow: 0 12px 24px rgba(202, 138, 4, 0.6),
-                    0 8px 16px rgba(202, 138, 4, 0.5),
-                    inset 0 1px 3px rgba(255, 255, 255, 0.2),
-                    0 0 0 8px rgba(202, 138, 4, 0);
+        box-shadow: 0 4px 20px var(--color-warning-glow),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+                    0 0 0 8px rgba(245, 158, 11, 0);
     }
 }
 
 .pulse-yellow {
-    animation: pulse-yellow 2s infinite;
+    animation: pulse-yellow 2s ease-in-out infinite;
 }
 
-@keyframes hover-animation {
+@keyframes pulse-processing {
     0%, 100% {
+        box-shadow: 0 4px 16px var(--color-processing-glow),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
         transform: scale(1);
     }
     50% {
-        transform: scale(1.08);
+        box-shadow: 0 6px 24px var(--color-processing-glow),
+                    0 2px 4px rgba(0, 0, 0, 0.1),
+                    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+        transform: scale(1.02);
+    }
+}
+
+/* Subtle hover animation for active workpieces */
+@keyframes workpiece-active {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2px);
     }
 }
 
 .animate-hover {
-    animation: hover-animation 2s ease-in-out infinite;
+    animation: workpiece-active 2s ease-in-out infinite;
+}
+
+/* Shimmer effect for loading states */
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        rgba(255, 255, 255, 0) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
 }
 
 /* ===========================================
-   Workpiece/Part Styles
+   Workpiece/Part Styles - Touch Optimized
+   Large touch targets with clear status indicators
    =========================================== */
 .workpiece {
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4),
-                0 4px 8px rgba(0, 0, 0, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
-    transition: all 0.3s ease;
+    /* Ensure minimum touch target */
+    min-height: 80px;
+
+    /* Visual styling */
+    border-radius: var(--radius-md);
     position: relative;
-    border-radius: 0.5rem;
     overflow: hidden;
     cursor: pointer;
     user-select: none;
     -webkit-user-select: none;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    /* Transitions */
+    transition: transform var(--transition-fast),
+                box-shadow var(--transition-fast);
+
+    /* Default shadow */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
+/* Subtle highlight overlay */
 .workpiece::before {
     content: "";
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg,
-        rgba(255, 255, 255, 0.25) 0%,
-        transparent 40%,
-        rgba(0, 0, 0, 0.15) 100%);
-    border-radius: inherit;
+    height: 40%;
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.2) 0%,
+        rgba(255, 255, 255, 0) 100%);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
     pointer-events: none;
 }
 
-/* Workpiece Status Colors */
+/* Touch feedback */
+.workpiece:active {
+    transform: scale(0.97);
+}
+
+/* Workpiece Status Colors - High contrast for industrial use */
 .workpiece.status-ready,
 .workpiece.status-unprocessed {
-    background-color: var(--color-primary);
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+    box-shadow: 0 4px 16px var(--color-primary-glow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .workpiece.status-completed,
 .workpiece.status-processed {
-    background-color: var(--color-success);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 16px var(--color-success-glow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .workpiece.status-processing,
 .workpiece.status-at-robot,
 .workpiece.status-in-machine {
-    background-color: var(--color-processing);
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    box-shadow: 0 4px 16px var(--color-processing-glow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .workpiece.status-error {
-    background-color: var(--color-error);
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 4px 16px var(--color-error-glow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.workpiece.status-locked {
-    background-color: var(--color-gray-600);
-}
-
+.workpiece.status-locked,
 .workpiece.status-unused {
-    background-color: var(--color-gray-600);
+    background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+    box-shadow: 0 4px 12px rgba(100, 116, 139, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-/* Status-specific shadows */
-.workpiece.status-completed,
-.workpiece.status-processed,
+/* Status-specific colored shadows */
 .shadow-green {
-    box-shadow: 0 8px 16px rgba(34, 197, 94, 0.4),
-                0 4px 8px rgba(34, 197, 94, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px var(--color-success-glow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.workpiece.status-processing,
-.workpiece.status-at-robot,
-.workpiece.status-in-machine,
 .shadow-orange {
-    box-shadow: 0 8px 16px rgba(234, 88, 12, 0.4),
-                0 4px 8px rgba(234, 88, 12, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px var(--color-processing-glow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
-.workpiece.status-error,
 .shadow-red {
-    box-shadow: 0 8px 16px rgba(239, 68, 68, 0.4),
-                0 4px 8px rgba(239, 68, 68, 0.3),
-                inset 0 1px 3px rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px var(--color-error-glow),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 /* ===========================================
@@ -387,8 +558,12 @@ p {
 .cursor-pointer { cursor: pointer; }
 .z-10 { z-index: 10; }
 .z-20 { z-index: 20; }
+.z-50 { z-index: 50; }
+.fixed { position: fixed; }
 .absolute { position: absolute; }
 .relative { position: relative; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.space-y-4 > * + * { margin-top: 1rem; }
 .top-2 { top: 0.5rem; }
 .top-4 { top: 1rem; }
 .right-2 { right: 0.5rem; }
@@ -410,8 +585,13 @@ p {
 
 /* Grid */
 .grid { display: grid; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .grid-rows-2 { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+.grid-rows-4 { grid-template-rows: repeat(4, minmax(0, 1fr)); }
+.grid-rows-7 { grid-template-rows: repeat(7, minmax(0, 1fr)); }
+.gap-2 { gap: 0.5rem; }
+.col-span-2 { grid-column: span 2 / span 2; }
 
 /* ===========================================
    Custom Scrollbar
@@ -468,21 +648,20 @@ button:focus, input:focus, select:focus, textarea:focus {
 }
 
 /* ===========================================
-   FANUC Header Background - Glasmorphismus
+   Header - Subtle Glassmorphism
    =========================================== */
 .fanuc-header {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    border-bottom: 4px solid #004c7f;
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.2),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    background: var(--glass-bg-dark);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border-bottom: 3px solid var(--color-primary);
+    box-shadow: 0 4px 24px rgba(0, 61, 92, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.5);
     position: relative;
+    z-index: 100;
 }
 
-/* Zusätzlicher Glaseffekt für bessere Sichtbarkeit */
+/* Subtle gradient overlay */
 .fanuc-header::before {
     content: '';
     position: absolute;
@@ -490,12 +669,26 @@ button:focus, input:focus, select:focus, textarea:focus {
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(90deg,
-        rgba(255, 255, 255, 0.1) 0%,
-        rgba(255, 255, 255, 0.05) 50%,
-        rgba(0, 0, 0, 0.05) 100%);
+    background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(255, 255, 255, 0) 100%);
     pointer-events: none;
     z-index: -1;
+}
+
+/* Header navigation buttons - touch optimized */
+.header-nav-btn {
+    min-width: var(--touch-target-min);
+    min-height: var(--touch-target-min);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+}
+
+.header-nav-btn:active {
+    transform: scale(0.95);
 }
 
 /* ===========================================
@@ -523,7 +716,7 @@ button:focus, input:focus, select:focus, textarea:focus {
 }
 
 /* ===========================================
-   Dialog Overlay - Must be above header/footer
+   Dialog Overlay - Touch Optimized Modals
    =========================================== */
 .dialog-overlay,
 .error-overlay {
@@ -533,6 +726,266 @@ button:focus, input:focus, select:focus, textarea:focus {
     right: 0 !important;
     bottom: 0 !important;
     z-index: 9999 !important;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--space-lg);
 }
+
+.dialog-content {
+    background: var(--glass-bg-dark);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+    max-width: 90vw;
+    max-height: 90vh;
+    overflow: auto;
+}
+
+/* ===========================================
+   Touch-Specific Enhancements
+   =========================================== */
+
+/* Larger touch targets for form inputs */
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="email"],
+select,
+textarea {
+    min-height: var(--touch-target-min);
+    padding: var(--space-md);
+    font-size: 1rem;
+    border-radius: var(--radius-md);
+    border: 2px solid var(--color-gray-300);
+    background: white;
+    transition: border-color var(--transition-fast),
+                box-shadow var(--transition-fast);
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--color-primary-glow);
+}
+
+/* Touch-friendly checkboxes and radio buttons */
+input[type="checkbox"],
+input[type="radio"] {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+/* Range slider for speed control */
+input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 12px;
+    border-radius: 6px;
+    background: var(--color-gray-300);
+    cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+    box-shadow: 0 4px 12px var(--color-primary-glow);
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+input[type="range"]::-webkit-slider-thumb:active {
+    transform: scale(1.1);
+}
+
+input[type="range"]::-moz-range-thumb {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+    box-shadow: 0 4px 12px var(--color-primary-glow);
+    cursor: pointer;
+}
+
+/* ===========================================
+   Status Indicators
+   =========================================== */
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    position: relative;
+}
+
+.status-indicator.status-online {
+    background: var(--color-success);
+    box-shadow: 0 0 8px var(--color-success-glow);
+}
+
+.status-indicator.status-offline {
+    background: var(--color-error);
+    box-shadow: 0 0 8px var(--color-error-glow);
+}
+
+.status-indicator.status-warning {
+    background: var(--color-warning);
+    box-shadow: 0 0 8px var(--color-warning-glow);
+}
+
+/* Pulsing status indicator */
+.status-indicator.pulse::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    animation: status-pulse 2s ease-out infinite;
+}
+
+@keyframes status-pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* ===========================================
+   Maintenance Grid - Touch Optimized
+   =========================================== */
+.maintenance-tile {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-sm);
+    padding: var(--space-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.maintenance-tile:active:not(:disabled) {
+    transform: scale(0.97);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.maintenance-tile:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.maintenance-tile .tile-icon {
+    width: 40px;
+    height: 40px;
+    color: var(--color-primary);
+}
+
+.maintenance-tile .tile-label {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--color-gray-800);
+    text-align: center;
+}
+
+.maintenance-tile .tile-sublabel {
+    font-size: 0.75rem;
+    color: var(--color-gray-500);
+}
+
+/* Danger tile variant */
+.maintenance-tile.tile-danger {
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.maintenance-tile.tile-danger .tile-icon {
+    color: var(--color-error);
+}
+
+/* ===========================================
+   Typography Enhancements
+   =========================================== */
+.font-mono {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.text-display {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* Large numeric displays */
+.numeric-display {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+}
+
+/* ===========================================
+   Scrollbar Styling
+   =========================================== */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-400) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-gray-400);
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-gray-500);
+}
+
+/* ===========================================
+   Vertical Text (for collapsed sidebar)
+   =========================================== */
+.vertical-text {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    letter-spacing: 0.1em;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 600;
+}
+

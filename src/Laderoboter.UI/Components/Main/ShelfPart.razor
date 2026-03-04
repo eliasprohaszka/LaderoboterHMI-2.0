@@ -2,26 +2,17 @@
 @inject ITranslationService T
 
 @{
-    // Background color based on status (identical to WorkpiecePart)
-    var bgClass = Workpiece?.State switch
+    // Status-based CSS class for styling (identical to WorkpiecePart)
+    var statusClass = Workpiece?.State switch
     {
-        WorkpieceState.Processed => "bg-green-600",
-        WorkpieceState.AtRobot => "bg-orange-600",
-        WorkpieceState.InMachine => "bg-orange-600",
-        WorkpieceState.Locked => "bg-gray-600",
-        WorkpieceState.Unused => "bg-gray-600",
-        WorkpieceState.Unprocessed => "bg-[#004F7C]",
-        null => "bg-gray-600",
-        _ => "bg-[#004F7C]"
-    };
-
-    // Shadow class based on status
-    var shadowClass = Workpiece?.State switch
-    {
-        WorkpieceState.Processed => "shadow-green",
-        WorkpieceState.AtRobot => "shadow-orange",
-        WorkpieceState.InMachine => "shadow-orange",
-        _ => ""
+        WorkpieceState.Processed => "status-processed",
+        WorkpieceState.AtRobot => "status-at-robot",
+        WorkpieceState.InMachine => "status-in-machine",
+        WorkpieceState.Locked => "status-locked",
+        WorkpieceState.Unused => "status-unused",
+        WorkpieceState.Unprocessed => "status-unprocessed",
+        null => "status-unused",
+        _ => "status-unprocessed"
     };
 
     // Animation for processing status
@@ -43,18 +34,51 @@
 
     // Shelf position ID: R1-1 to R7-4
     var shelfId = $"R{Row}-{Column}";
+
+    var currentState = Workpiece?.State ?? WorkpieceState.Unused;
 }
 
-<!-- ShelfPart - Single shelf position (identical style to WorkpiecePart) -->
-<div class="workpiece border-white/10 border-[1px] rounded-lg relative overflow-hidden text-xs font-medium transition-all duration-300 cursor-pointer select-none h-full @bgClass @shadowClass @animClass"
+<!-- ShelfPart - Identical design to WorkpiecePart -->
+<div class="workpiece @statusClass @animClass"
      @onclick="OnClick">
 
-    <div class="absolute top-2 left-2 w-3 h-3 rounded-full opacity-70"></div>
+    <!-- Content container with padding for touch -->
+    <div class="workpiece-content">
+        <!-- Position ID - Large and clear -->
+        <div class="workpiece-id">@shelfId</div>
 
-    <div class="absolute top-2 left-2 z-10">
-        <div class="font-semibold text-white text-sm">@shelfId</div>
-        <div class="text-xs mt-0.5 text-white/80">@stateText</div>
+        <!-- Status indicator with icon -->
+        <div class="workpiece-status">
+            @switch (currentState)
+            {
+                case WorkpieceState.Processed:
+                    <Blazicon Svg="Lucide.CircleCheck" class="workpiece-status-icon" />
+                    break;
+                case WorkpieceState.AtRobot:
+                    <Blazicon Svg="Lucide.Bot" class="workpiece-status-icon" />
+                    break;
+                case WorkpieceState.InMachine:
+                    <Blazicon Svg="Lucide.Factory" class="workpiece-status-icon" />
+                    break;
+                case WorkpieceState.Locked:
+                    <Blazicon Svg="Lucide.Lock" class="workpiece-status-icon" />
+                    break;
+                case WorkpieceState.Unused:
+                    <Blazicon Svg="Lucide.CircleDashed" class="workpiece-status-icon" />
+                    break;
+                default:
+                    <Blazicon Svg="Lucide.Package" class="workpiece-status-icon" />
+                    break;
+            }
+            <span class="workpiece-status-text">@stateText</span>
+        </div>
     </div>
+
+    <!-- Processing indicator overlay -->
+    @if (currentState is WorkpieceState.AtRobot or WorkpieceState.InMachine)
+    {
+        <div class="workpiece-processing-indicator"></div>
+    }
 </div>
 
 @code {
