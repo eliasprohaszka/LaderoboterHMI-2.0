@@ -6,7 +6,9 @@
         class="p-2 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center justify-center"
         @onclick="ToggleMenu"
         @onclick:stopPropagation="true">
-        <Blazicon Svg="@(isOpen ? Lucide.Ellipsis : Lucide.EllipsisVertical)" class="w-5 h-5" />
+        <div class="icon-wrapper @(isOpen ? "rotated" : "")">
+            <Blazicon Svg="Lucide.EllipsisVertical" class="w-5 h-5" />
+        </div>
     </button>
 
     <!-- Dropdown Menu -->

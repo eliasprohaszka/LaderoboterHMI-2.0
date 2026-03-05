@@ -2,6 +2,7 @@
 @inject INfcService NfcService
 @inject ITranslationService T
 @inject IAuthorizationService Authorization
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="bg-white/40 backdrop-blur-sm rounded-xl p-6 shadow-lg">
@@ -12,11 +13,23 @@
         </div>
         @if (Authorization.IsAdmin())
         {
-            <button class="px-4 py-2 bg-primary text-white rounded-lg robot-control-btn flex items-center space-x-2"
-                    @onclick="ShowCreateDialog">
-                <Blazicon Svg="Lucide.UserPlus" class="w-4 h-4" />
-                <span>@T.Translate("users.add")</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <button class="px-4 py-2 bg-primary text-white rounded-lg robot-control-btn flex items-center space-x-2"
+                        @onclick="ShowCreateDialog">
+                    <Blazicon Svg="Lucide.UserPlus" class="w-4 h-4" />
+                    <span>@T.Translate("users.add")</span>
+                </button>
+                <ActionDropdown @ref="actionsDropdown">
+                    <button class="dropdown-item" @onclick="ExportAndClose">
+                        <Blazicon Svg="Lucide.Download" class="dropdown-item-icon" />
+                        <span>@T.Translate("users.export")</span>
+                    </button>
+                    <button class="dropdown-item" @onclick="ImportAndClose">
+                        <Blazicon Svg="Lucide.Upload" class="dropdown-item-icon" />
+                        <span>@T.Translate("users.import")</span>
+                    </button>
+                </ActionDropdown>
+            </div>
         }
     </div>
 
@@ -236,7 +249,26 @@
     </div>
 }
 
+<!-- Import Users Dialog -->
+<ImportUsersDialog
+    IsVisible="_showImportDialog"
+    ValidationResult="_importValidation"
+    OnFileLoaded="OnImportFileLoaded"
+    OnConfirmed="ConfirmImport"
+    OnExportFirstRequested="ExportBeforeImport"
+    OnCancelled="CancelImport" />
+
+<!-- Info Dialog for messages -->
+<InfoDialog
+    IsVisible="_showInfoDialog"
+    Title="@_infoDialogTitle"
+    Message="@_infoDialogMessage"
+    OnClose="() => _showInfoDialog = false" />
+
 @code {
+    // Components
+    private ActionDropdown? actionsDropdown;
+
     private List<User> _users = new();
     private bool _showDialog;
     private bool _showDeleteDialog;
@@ -253,6 +285,14 @@
     private string? _dialogError;
     private bool _isSaving;
     private bool _isScanning;
+
+    // Import/Export state
+    private bool _showImportDialog = false;
+    private bool _showInfoDialog = false;
+    private string _infoDialogTitle = "";
+    private string _infoDialogMessage = "";
+    private string? _pendingImportJson = null;
+    private UsersImportValidation? _importValidation = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -431,6 +471,120 @@
         UserRole.Bediener => T.Translate("users.role.bediener"),
         _ => role.ToString()
     };
+
+    // Export/Import methods
+    private async Task ExportUsers()
+    {
+        try
+        {
+            var json = await UserService.ExportToJsonAsync();
+            var fileName = $"laderoboter-users-{DateTime.Now:yyyy-MM-dd-HHmmss}.json";
+
+            await JS.InvokeVoidAsync("downloadFile", fileName, json, "application/json");
+
+            ShowInfo(T.Translate("users.export.success"), T.Translate("users.export.successMessage"));
+        }
+        catch (Exception ex)
+        {
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("users.export.error")}: {ex.Message}");
+        }
+    }
+
+    private void ImportUsers()
+    {
+        _showImportDialog = true;
+        _importValidation = null;
+        _pendingImportJson = null;
+    }
+
+    private async Task OnImportFileLoaded(string json)
+    {
+        try
+        {
+            _pendingImportJson = json;
+
+            _importValidation = await UserService.ValidateImportJsonAsync(json);
+
+            if (!string.IsNullOrEmpty(_importValidation.ErrorMessage))
+            {
+                _showImportDialog = false;
+                ShowInfo(T.Translate("common.error"), _importValidation.ErrorMessage);
+                return;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _showImportDialog = false;
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("users.import.readError")}: {ex.Message}");
+        }
+    }
+
+    private async Task ConfirmImport()
+    {
+        _showImportDialog = false;
+
+        if (string.IsNullOrEmpty(_pendingImportJson))
+            return;
+
+        try
+        {
+            var result = await UserService.ImportFromJsonAsync(_pendingImportJson);
+
+            await LoadUsers();
+
+            var message = string.Format(T.Translate("users.import.successMessage"), result.ImportedCount, result.UpdatedCount);
+
+            if (result.Errors.Count > 0)
+            {
+                message += "\n\n" + string.Format(T.Translate("users.import.skippedUsers"), result.SkippedCount);
+            }
+
+            ShowInfo(T.Translate("users.import.success"), message);
+        }
+        catch (Exception ex)
+        {
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("users.import.error")}: {ex.Message}");
+        }
+        finally
+        {
+            _pendingImportJson = null;
+            _importValidation = null;
+        }
+    }
+
+    private async Task ExportBeforeImport()
+    {
+        await ExportUsers();
+    }
+
+    private void CancelImport()
+    {
+        _showImportDialog = false;
+        _pendingImportJson = null;
+        _importValidation = null;
+    }
+
+    private void ShowInfo(string title, string message)
+    {
+        _infoDialogTitle = title;
+        _infoDialogMessage = message;
+        _showInfoDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task ExportAndClose()
+    {
+        actionsDropdown?.Close();
+        await ExportUsers();
+    }
+
+    private void ImportAndClose()
+    {
+        actionsDropdown?.Close();
+        ImportUsers();
+    }
 
     public void Dispose()
     {

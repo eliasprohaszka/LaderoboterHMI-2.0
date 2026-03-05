@@ -19,7 +19,7 @@
 }
 
 .header-logo {
-    height: 44px;
+    height: 65px;
     width: auto;
     object-fit: contain;
     /* Vertically center in header, positioned to overlap the blue border slightly */

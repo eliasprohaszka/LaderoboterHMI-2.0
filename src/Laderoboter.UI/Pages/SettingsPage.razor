@@ -3,6 +3,7 @@
 @inject IRobotService RobotService
 @inject ITranslationService T
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="h-full">
@@ -155,6 +156,22 @@
     </div>
 </div>
 
+<!-- Import Settings Dialog -->
+<ImportSettingsDialog
+    IsVisible="showImportDialog"
+    ValidationResult="importValidation"
+    OnFileLoaded="OnImportFileLoaded"
+    OnConfirmed="ConfirmImport"
+    OnExportFirstRequested="ExportBeforeImport"
+    OnCancelled="CancelImport" />
+
+<!-- Info Dialog for messages -->
+<InfoDialog
+    IsVisible="showInfoDialog"
+    Title="@infoDialogTitle"
+    Message="@infoDialogMessage"
+    OnClose="() => showInfoDialog = false" />
+
 @code {
     // Components
     private ActionDropdown? actionsDropdown;
@@ -168,6 +185,14 @@
     // UI settings
     private string selectedLanguage = "de";
     private IEnumerable<Laderoboter.Core.Models.Language> availableLanguages = new List<Laderoboter.Core.Models.Language>();
+
+    // Import/Export state
+    private bool showImportDialog = false;
+    private bool showInfoDialog = false;
+    private string infoDialogTitle = "";
+    private string infoDialogMessage = "";
+    private string? pendingImportJson = null;
+    private SettingsImportValidation? importValidation = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -224,14 +249,118 @@
         }
     }
 
-    private void ExportSettings()
+    private async Task ExportSettings()
     {
-        // TODO: Implement export
+        try
+        {
+            var json = await Settings.ExportToJsonAsync();
+            var fileName = $"laderoboter-settings-{DateTime.Now:yyyy-MM-dd-HHmmss}.json";
+
+            // Download the file using JS interop
+            await JS.InvokeVoidAsync("downloadFile", fileName, json, "application/json");
+
+            ShowInfo(T.Translate("settings.export.success"), T.Translate("settings.export.successMessage"));
+        }
+        catch (Exception ex)
+        {
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("settings.export.error")}: {ex.Message}");
+        }
     }
 
     private void ImportSettings()
     {
-        // TODO: Implement import
+        // Show import dialog (warning phase first)
+        showImportDialog = true;
+        importValidation = null;
+        pendingImportJson = null;
+    }
+
+    private async Task OnImportFileLoaded(string json)
+    {
+        try
+        {
+            pendingImportJson = json;
+
+            // Validate the import
+            importValidation = await Settings.ValidateImportJsonAsync(json);
+
+            if (!string.IsNullOrEmpty(importValidation.ErrorMessage))
+            {
+                showImportDialog = false;
+                ShowInfo(T.Translate("common.error"), importValidation.ErrorMessage);
+                return;
+            }
+
+            // Dialog will automatically switch to validation phase
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            showImportDialog = false;
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("settings.import.readError")}: {ex.Message}");
+        }
+    }
+
+    private async Task ConfirmImport()
+    {
+        showImportDialog = false;
+
+        if (string.IsNullOrEmpty(pendingImportJson))
+            return;
+
+        try
+        {
+            var result = await Settings.ImportFromJsonAsync(pendingImportJson);
+
+            // Reload settings in UI
+            await ResetAllSettings();
+
+            // Build result message
+            var message = string.Format(T.Translate("settings.import.successMessage"), result.ImportedCount);
+
+            if (result.IncompatibleFields.Count > 0)
+            {
+                message += "\n\n" + string.Format(T.Translate("settings.import.skippedFields"), result.SkippedCount);
+                message += "\n" + string.Join(", ", result.IncompatibleFields.Take(10));
+                if (result.IncompatibleFields.Count > 10)
+                {
+                    message += $" (+{result.IncompatibleFields.Count - 10})";
+                }
+            }
+
+            ShowInfo(T.Translate("settings.import.success"), message);
+        }
+        catch (Exception ex)
+        {
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("settings.import.error")}: {ex.Message}");
+        }
+        finally
+        {
+            pendingImportJson = null;
+            importValidation = null;
+        }
+    }
+
+    private async Task ExportBeforeImport()
+    {
+        // Export current settings first, then continue with import dialog
+        await ExportSettings();
+        // Dialog stays open for the user to continue with import
+    }
+
+    private void CancelImport()
+    {
+        showImportDialog = false;
+        pendingImportJson = null;
+        importValidation = null;
+    }
+
+    private void ShowInfo(string title, string message)
+    {
+        infoDialogTitle = title;
+        infoDialogMessage = message;
+        showInfoDialog = true;
+        StateHasChanged();
     }
 
     private async Task SaveAndClose()
@@ -246,16 +375,16 @@
         actionsDropdown?.Close();
     }
 
-    private void ExportAndClose()
+    private async Task ExportAndClose()
     {
-        ExportSettings();
         actionsDropdown?.Close();
+        await ExportSettings();
     }
 
     private void ImportAndClose()
     {
-        ImportSettings();
         actionsDropdown?.Close();
+        ImportSettings();
     }
 
     private void NavigateToTranslations()

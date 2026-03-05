@@ -103,6 +103,51 @@
     color: #38a169;
 }
 
+.info-row .value.warning {
+    color: #d69e2e;
+}
+
+.incompatible-section {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.incompatible-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.incompatible-field {
+    background-color: #fed7aa;
+    color: #c05621;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-family: monospace;
+}
+
+.more-fields {
+    color: #a0aec0;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.incompatible-note {
+    margin: 0.5rem 0 0;
+    font-size: 0.75rem;
+    color: #718096;
+    font-style: italic;
+}
+
+.confirm-question {
+    margin: 1rem 0 0;
+    font-weight: 500;
+    color: #2d3748;
+}
+
 .backup-hint {
     display: flex;
     align-items: center;

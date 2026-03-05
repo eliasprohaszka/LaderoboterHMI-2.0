@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Laderoboter.Core.Data;
 using Laderoboter.Core.Models;
@@ -10,6 +11,11 @@ namespace Laderoboter.Core.Services;
 public class SettingsService : ISettingsService
 {
     private readonly LaderoboterDbContext _context;
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     public SettingsService(LaderoboterDbContext context)
     {
@@ -144,4 +150,152 @@ public class SettingsService : ISettingsService
             await _context.SaveChangesAsync();
         }
     }
+
+    public async Task<string> ExportToJsonAsync()
+    {
+        var settings = await _context.Settings
+            .AsNoTracking()
+            .OrderBy(s => s.SettingKey)
+            .ToListAsync();
+
+        var exportData = new SettingsExportData
+        {
+            ExportedAt = DateTime.UtcNow,
+            Version = "1.0",
+            Settings = settings.ToDictionary(
+                s => s.SettingKey,
+                s => new SettingsExportEntry
+                {
+                    Value = s.SettingValue,
+                    ValueType = s.ValueType,
+                    Category = s.Category
+                })
+        };
+
+        return JsonSerializer.Serialize(exportData, _jsonOptions);
+    }
+
+    public async Task<IEnumerable<string>> GetAllKeysAsync()
+    {
+        return await _context.Settings
+            .AsNoTracking()
+            .Select(s => s.SettingKey)
+            .ToListAsync();
+    }
+
+    public async Task<SettingsImportValidation> ValidateImportJsonAsync(string json)
+    {
+        var validation = new SettingsImportValidation();
+
+        try
+        {
+            var importData = JsonSerializer.Deserialize<SettingsExportData>(json, _jsonOptions);
+            if (importData?.Settings == null)
+            {
+                validation.IsValid = false;
+                validation.ErrorMessage = "Invalid JSON format: Missing settings data";
+                return validation;
+            }
+
+            var existingKeys = (await GetAllKeysAsync()).ToHashSet();
+
+            foreach (var kvp in importData.Settings)
+            {
+                if (existingKeys.Contains(kvp.Key))
+                {
+                    validation.ValidFieldCount++;
+                }
+                else
+                {
+                    validation.IncompatibleFields.Add(kvp.Key);
+                }
+            }
+
+            validation.IsValid = validation.IncompatibleFields.Count == 0;
+            return validation;
+        }
+        catch (JsonException ex)
+        {
+            validation.IsValid = false;
+            validation.ErrorMessage = $"Invalid JSON: {ex.Message}";
+            return validation;
+        }
+    }
+
+    public async Task<SettingsImportResult> ImportFromJsonAsync(string json)
+    {
+        var result = new SettingsImportResult();
+
+        try
+        {
+            var importData = JsonSerializer.Deserialize<SettingsExportData>(json, _jsonOptions);
+            if (importData?.Settings == null)
+            {
+                result.Success = false;
+                result.ErrorMessage = "Invalid JSON format: Missing settings data";
+                return result;
+            }
+
+            var existingKeys = (await GetAllKeysAsync()).ToHashSet();
+
+            foreach (var kvp in importData.Settings)
+            {
+                if (!existingKeys.Contains(kvp.Key))
+                {
+                    result.IncompatibleFields.Add(kvp.Key);
+                    result.SkippedCount++;
+                    continue;
+                }
+
+                var setting = await _context.Settings.FirstOrDefaultAsync(s => s.SettingKey == kvp.Key);
+                if (setting != null)
+                {
+                    setting.SettingValue = kvp.Value.Value;
+                    setting.UpdatedAt = DateTime.UtcNow;
+                    result.ImportedCount++;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            result.Success = result.IncompatibleFields.Count == 0;
+            return result;
+        }
+        catch (JsonException ex)
+        {
+            result.Success = false;
+            result.ErrorMessage = $"Invalid JSON: {ex.Message}";
+            return result;
+        }
+    }
+}
+
+/// <summary>
+/// Data structure for settings export/import JSON.
+/// </summary>
+public class SettingsExportData
+{
+    [JsonPropertyName("exportedAt")]
+    public DateTime ExportedAt { get; set; }
+
+    [JsonPropertyName("version")]
+    public string Version { get; set; } = "1.0";
+
+    [JsonPropertyName("settings")]
+    public Dictionary<string, SettingsExportEntry> Settings { get; set; } = new();
+}
+
+/// <summary>
+/// Single setting entry in export/import JSON.
+/// </summary>
+public class SettingsExportEntry
+{
+    [JsonPropertyName("value")]
+    public string? Value { get; set; }
+
+    [JsonPropertyName("valueType")]
+    public string? ValueType { get; set; }
+
+    [JsonPropertyName("category")]
+    public string? Category { get; set; }
 }

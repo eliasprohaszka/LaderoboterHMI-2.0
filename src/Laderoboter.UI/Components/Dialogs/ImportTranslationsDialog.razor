@@ -1,58 +1,131 @@
 @inject ITranslationService T
+@inject IJSRuntime JS
 
 @if (IsVisible)
 {
     <div class="dialog-overlay" @onclick="OnCancel">
         <div class="dialog" @onclick:stopPropagation="true">
             <div class="dialog-header">
+                <div class="header-icon warning">
+                    <Blazicon Svg="Lucide.TriangleAlert" class="w-6 h-6" />
+                </div>
                 <h3 class="dialog-title">@T.Translate("translations.importTitle")</h3>
                 <button class="close-button" @onclick="OnCancel">×</button>
             </div>
 
             <div class="dialog-body">
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">JSON</label>
-                        <textarea
-                            class="json-input"
-                            placeholder='{"de": {"key": "value"}, "en": {"key": "value"}}'
-                            @bind="JsonContent"></textarea>
+                @if (currentPhase == ImportPhase.Warning)
+                {
+                    <!-- Phase 1: Initial Warning -->
+                    <p class="warning-message">@T.Translate("translations.import.confirmMessage")</p>
+
+                    <div class="backup-hint">
+                        <Blazicon Svg="Lucide.Info" class="w-4 h-4" />
+                        <span>@T.Translate("translations.import.backupHint")</span>
                     </div>
-                    <label class="flex items-center space-x-2 cursor-pointer">
+                }
+                else if (currentPhase == ImportPhase.Options)
+                {
+                    <!-- Phase 2: File loaded, show options -->
+                    <div class="validation-info">
+                        <div class="info-row">
+                            <span class="label">@T.Translate("translations.importTitle")</span>
+                            <span class="value success">
+                                <Blazicon Svg="Lucide.FileCheck" class="w-4 h-4 inline mr-1" />
+                                @T.Translate("common.ok")
+                            </span>
+                        </div>
+                    </div>
+
+                    <label class="flex items-center space-x-2 cursor-pointer p-3 bg-gray-50 rounded-lg">
                         <input type="checkbox"
                                class="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
                                @bind="OverwriteExisting" />
                         <span class="text-sm">@T.Translate("translations.overwriteExisting")</span>
                     </label>
-                </div>
+                }
             </div>
 
             <div class="dialog-footer">
                 <button class="btn btn-secondary" @onclick="OnCancel">
                     @T.Translate("common.cancel")
                 </button>
-                <button class="btn btn-primary" @onclick="OnConfirm">
-                    @T.Translate("translations.import")
-                </button>
+
+                @if (currentPhase == ImportPhase.Warning)
+                {
+                    <button class="btn btn-outline-primary" @onclick="OnExportFirst">
+                        <Blazicon Svg="Lucide.Download" class="w-4 h-4 mr-1" />
+                        @T.Translate("translations.import.exportFirst")
+                    </button>
+                    <button class="btn btn-warning" @onclick="SelectFile">
+                        <Blazicon Svg="Lucide.FolderOpen" class="w-4 h-4 mr-1" />
+                        @T.Translate("translations.import.selectFile")
+                    </button>
+                }
+                else if (currentPhase == ImportPhase.Options)
+                {
+                    <button class="btn btn-warning" @onclick="OnConfirm">
+                        <Blazicon Svg="Lucide.Upload" class="w-4 h-4 mr-1" />
+                        @T.Translate("translations.import.confirmImport")
+                    </button>
+                }
             </div>
         </div>
     </div>
 }
 
+<!-- Hidden file input -->
+<input type="file"
+       @ref="fileInput"
+       id="importTranslationsFileInput"
+       accept=".json"
+       style="display: none;"
+       @onchange="OnFileSelected" />
+
 @code {
+    private enum ImportPhase { Warning, Options }
+    private ImportPhase currentPhase = ImportPhase.Warning;
+    private ElementReference fileInput;
+
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public EventCallback OnCancelled { get; set; }
     [Parameter] public EventCallback<(string Json, bool Overwrite)> OnConfirmed { get; set; }
+    [Parameter] public EventCallback OnExportFirstRequested { get; set; }
 
     private string JsonContent { get; set; } = "";
     private bool OverwriteExisting { get; set; } = false;
 
     protected override void OnParametersSet()
     {
-        if (IsVisible)
+        // Reset phase when dialog is hidden
+        if (!IsVisible)
         {
+            currentPhase = ImportPhase.Warning;
             JsonContent = "";
             OverwriteExisting = false;
+        }
+    }
+
+    private async Task SelectFile()
+    {
+        await JS.InvokeVoidAsync("triggerFileInput", "importTranslationsFileInput");
+    }
+
+    private async Task OnFileSelected(ChangeEventArgs e)
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("readFileAsText", "importTranslationsFileInput");
+            if (!string.IsNullOrEmpty(json))
+            {
+                JsonContent = json;
+                currentPhase = ImportPhase.Options;
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            // File read error will be handled by parent
         }
     }
 
@@ -64,8 +137,14 @@
         }
     }
 
+    private async Task OnExportFirst()
+    {
+        await OnExportFirstRequested.InvokeAsync();
+    }
+
     private async Task OnCancel()
     {
+        currentPhase = ImportPhase.Warning;
         await OnCancelled.InvokeAsync();
     }
 }

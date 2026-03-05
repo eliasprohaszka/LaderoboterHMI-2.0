@@ -185,6 +185,31 @@ public static class TranslationSeeder
         Add("settings.export", "Exportieren", "Export", "settings");
         Add("settings.import", "Importieren", "Import", "settings");
 
+        // === Settings Export ===
+        Add("settings.export.success", "Export erfolgreich", "Export successful", "settings");
+        Add("settings.export.successMessage", "Die Einstellungen wurden erfolgreich exportiert.", "Settings have been exported successfully.", "settings");
+        Add("settings.export.error", "Export fehlgeschlagen", "Export failed", "settings");
+
+        // === Settings Import ===
+        Add("settings.import.confirmTitle", "Einstellungen importieren", "Import Settings", "settings");
+        Add("settings.import.confirmMessage", "Achtung: Alle bestehenden Einstellungen werden durch den Import überschrieben!", "Warning: All existing settings will be overwritten by the import!", "settings");
+        Add("settings.import.validFields", "Gültige Felder", "Valid fields", "settings");
+        Add("settings.import.incompatibleFields", "Inkompatible Felder", "Incompatible fields", "settings");
+        Add("settings.import.incompatibleNote", "Diese Felder existieren nicht in der Datenbank und werden übersprungen.", "These fields do not exist in the database and will be skipped.", "settings");
+        Add("settings.import.backupHint", "Tipp: Exportieren Sie zuerst die aktuellen Einstellungen als Backup.", "Tip: Export the current settings first as a backup.", "settings");
+        Add("settings.import.exportFirst", "Erst exportieren", "Export first", "settings");
+        Add("settings.import.confirmImport", "Importieren", "Import", "settings");
+        Add("settings.import.selectFile", "Datei auswählen", "Select file", "settings");
+        Add("settings.import.proceedQuestion", "Möchten Sie den Import fortsetzen?", "Do you want to proceed with the import?", "settings");
+        Add("settings.import.success", "Import erfolgreich", "Import successful", "settings");
+        Add("settings.import.successMessage", "{0} Einstellungen wurden erfolgreich importiert.", "{0} settings have been imported successfully.", "settings");
+        Add("settings.import.skippedFields", "{0} Felder wurden übersprungen:", "{0} fields were skipped:", "settings");
+        Add("settings.import.error", "Import fehlgeschlagen", "Import failed", "settings");
+        Add("settings.import.readError", "Datei konnte nicht gelesen werden", "Could not read file", "settings");
+
+        // === Common ===
+        Add("common.more", "weitere", "more", "common");
+
         // === Robot Settings ===
         Add("settings.robot.title", "Roboter-Verbindung", "Robot Connection", "settings");
         Add("settings.robot.ipAddress", "IP-Adresse", "IP Address", "settings");
@@ -218,6 +243,17 @@ public static class TranslationSeeder
         Add("translations.import", "Importieren", "Import", "translations");
         Add("translations.importTitle", "Übersetzungen importieren", "Import Translations", "translations");
         Add("translations.overwriteExisting", "Bestehende überschreiben", "Overwrite existing", "translations");
+        Add("translations.export.success", "Export erfolgreich", "Export successful", "translations");
+        Add("translations.export.successMessage", "Die Übersetzungen wurden erfolgreich exportiert.", "Translations have been exported successfully.", "translations");
+        Add("translations.export.error", "Export fehlgeschlagen", "Export failed", "translations");
+        Add("translations.import.success", "Import erfolgreich", "Import successful", "translations");
+        Add("translations.import.successMessage", "Die Übersetzungen wurden erfolgreich importiert.", "Translations have been imported successfully.", "translations");
+        Add("translations.import.error", "Import fehlgeschlagen", "Import failed", "translations");
+        Add("translations.import.confirmMessage", "Achtung: Übersetzungen werden importiert!", "Warning: Translations will be imported!", "translations");
+        Add("translations.import.backupHint", "Tipp: Exportieren Sie zuerst die aktuellen Übersetzungen als Backup.", "Tip: Export the current translations first as a backup.", "translations");
+        Add("translations.import.exportFirst", "Erst exportieren", "Export first", "translations");
+        Add("translations.import.selectFile", "Datei auswählen", "Select file", "translations");
+        Add("translations.import.confirmImport", "Importieren", "Import", "translations");
 
         // === Connection Status ===
         Add("settings.connection.title", "Verbindungsstatus", "Connection Status", "settings");
@@ -399,6 +435,29 @@ public static class TranslationSeeder
         Add("users.delete", "Löschen", "Delete", "users");
         Add("users.error.personalNumberRequired", "Personalnummer ist erforderlich", "Personal number is required", "users");
         Add("users.error.passwordRequired", "Passwort ist erforderlich", "Password is required", "users");
+
+        // === User Export/Import ===
+        Add("users.export", "Exportieren", "Export", "users");
+        Add("users.import", "Importieren", "Import", "users");
+        Add("users.export.success", "Export erfolgreich", "Export successful", "users");
+        Add("users.export.successMessage", "Die Benutzer wurden erfolgreich exportiert.", "Users have been exported successfully.", "users");
+        Add("users.export.error", "Export fehlgeschlagen", "Export failed", "users");
+        Add("users.import.confirmTitle", "Benutzer importieren", "Import Users", "users");
+        Add("users.import.confirmMessage", "Achtung: Bestehende Benutzer mit gleicher Personalnummer werden aktualisiert!", "Warning: Existing users with the same personal number will be updated!", "users");
+        Add("users.import.backupHint", "Tipp: Exportieren Sie zuerst die aktuellen Benutzer als Backup.", "Tip: Export the current users first as a backup.", "users");
+        Add("users.import.exportFirst", "Erst exportieren", "Export first", "users");
+        Add("users.import.selectFile", "Datei auswählen", "Select file", "users");
+        Add("users.import.newUsers", "Neue Benutzer", "New users", "users");
+        Add("users.import.existingUsers", "Existierende Benutzer (werden aktualisiert)", "Existing users (will be updated)", "users");
+        Add("users.import.warnings", "Warnungen", "Warnings", "users");
+        Add("users.import.passwordNote", "Neue Benutzer erhalten ihre Personalnummer als Standardpasswort.", "New users will receive their personal number as default password.", "users");
+        Add("users.import.proceedQuestion", "Möchten Sie den Import fortsetzen?", "Do you want to proceed with the import?", "users");
+        Add("users.import.confirmImport", "Importieren", "Import", "users");
+        Add("users.import.success", "Import erfolgreich", "Import successful", "users");
+        Add("users.import.successMessage", "{0} Benutzer neu erstellt, {1} aktualisiert.", "{0} users created, {1} updated.", "users");
+        Add("users.import.skippedUsers", "{0} Benutzer wurden übersprungen.", "{0} users were skipped.", "users");
+        Add("users.import.error", "Import fehlgeschlagen", "Import failed", "users");
+        Add("users.import.readError", "Datei konnte nicht gelesen werden", "Could not read file", "users");
 
         // === Action Log ===
         Add("actionLog.title", "Aktionsprotokoll", "Action Log", "actionLog");

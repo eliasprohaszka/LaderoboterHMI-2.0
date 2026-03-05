@@ -1,6 +1,7 @@
 @page "/translations"
 @inject ITranslationService T
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 @implements IDisposable
 
 <div class="h-full">
@@ -22,20 +23,16 @@
                         <p class="text-sm text-gray-600 mt-1">@T.Translate("translations.description")</p>
                     </div>
                 </div>
-                <div class="flex gap-3">
-                    <button
-                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center"
-                        @onclick="ExportAll">
-                        <Blazicon Svg="Lucide.Download" class="w-4 h-4 mr-2" />
-                        @T.Translate("translations.export")
+                <ActionDropdown @ref="actionsDropdown">
+                    <button class="dropdown-item" @onclick="ExportAndClose">
+                        <Blazicon Svg="Lucide.Download" class="dropdown-item-icon" />
+                        <span>@T.Translate("translations.export")</span>
                     </button>
-                    <button
-                        class="p-2 px-4 rounded-lg text-white font-semibold transition-all duration-200 robot-control-btn shadow-lg bg-primary flex items-center"
-                        @onclick="ShowImportDialog">
-                        <Blazicon Svg="Lucide.Upload" class="w-4 h-4 mr-2" />
-                        @T.Translate("translations.import")
+                    <button class="dropdown-item" @onclick="ImportAndClose">
+                        <Blazicon Svg="Lucide.Upload" class="dropdown-item-icon" />
+                        <span>@T.Translate("translations.import")</span>
                     </button>
-                </div>
+                </ActionDropdown>
             </div>
         </div>
 
@@ -259,7 +256,8 @@
 <!-- Import Dialog -->
 <ImportTranslationsDialog IsVisible="showImport"
                           OnCancelled="CloseImportDialog"
-                          OnConfirmed="OnImportConfirmed" />
+                          OnConfirmed="OnImportConfirmed"
+                          OnExportFirstRequested="ExportBeforeImport" />
 
 <!-- Delete Language Dialog -->
 <SlideToDeleteDialog IsVisible="showDeleteConfirm"
@@ -268,7 +266,17 @@
                      OnCancelled="CloseDeleteDialog"
                      OnConfirmed="OnDeleteConfirmed" />
 
+<!-- Info Dialog for messages -->
+<InfoDialog
+    IsVisible="_showInfoDialog"
+    Title="@_infoDialogTitle"
+    Message="@_infoDialogMessage"
+    OnClose="() => _showInfoDialog = false" />
+
 @code {
+    // Components
+    private ActionDropdown? actionsDropdown;
+
     private List<Language> languages = new();
     private Dictionary<int, int> missingCounts = new();
     private List<string> categories = new();
@@ -299,6 +307,11 @@
     private bool showDeleteConfirm = false;
     private Language? languageToDelete;
     private string deleteConfirmMessage = "";
+
+    // Info dialog state
+    private bool _showInfoDialog = false;
+    private string _infoDialogTitle = "";
+    private string _infoDialogMessage = "";
 
     private System.Timers.Timer? searchDebounceTimer;
 
@@ -540,10 +553,19 @@
 
     private async Task ExportAll()
     {
-        var json = await T.ExportTranslationsAsync();
-        // In a real app, this would trigger a file download
-        // For now, we'll copy to clipboard via JS interop
-        Console.WriteLine(json);
+        try
+        {
+            var json = await T.ExportTranslationsAsync();
+            var fileName = $"laderoboter-translations-{DateTime.Now:yyyy-MM-dd-HHmmss}.json";
+
+            await JS.InvokeVoidAsync("downloadFile", fileName, json, "application/json");
+
+            ShowInfo(T.Translate("translations.export.success"), T.Translate("translations.export.successMessage"));
+        }
+        catch (Exception ex)
+        {
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("translations.export.error")}: {ex.Message}");
+        }
     }
 
     private void ShowImportDialog()
@@ -565,11 +587,38 @@
             await LoadCategories();
             await LoadTranslations();
             showImport = false;
+
+            ShowInfo(T.Translate("translations.import.success"), T.Translate("translations.import.successMessage"));
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Import error: {ex.Message}");
+            ShowInfo(T.Translate("common.error"), $"{T.Translate("translations.import.error")}: {ex.Message}");
         }
+    }
+
+    private void ShowInfo(string title, string message)
+    {
+        _infoDialogTitle = title;
+        _infoDialogMessage = message;
+        _showInfoDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task ExportBeforeImport()
+    {
+        await ExportAll();
+    }
+
+    private async Task ExportAndClose()
+    {
+        actionsDropdown?.Close();
+        await ExportAll();
+    }
+
+    private void ImportAndClose()
+    {
+        actionsDropdown?.Close();
+        ShowImportDialog();
     }
 
     private void NavigateBack()

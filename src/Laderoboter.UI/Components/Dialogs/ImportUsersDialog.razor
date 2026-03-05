@@ -1,0 +1,172 @@
+@inject ITranslationService T
+@inject IJSRuntime JS
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay" @onclick="OnCancel">
+        <div class="dialog" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="header-icon warning">
+                    <Blazicon Svg="Lucide.TriangleAlert" class="w-6 h-6" />
+                </div>
+                <h3 class="dialog-title">@T.Translate("users.import.confirmTitle")</h3>
+                <button class="close-button" @onclick="OnCancel">×</button>
+            </div>
+
+            <div class="dialog-body">
+                @if (currentPhase == ImportPhase.Warning)
+                {
+                    <!-- Phase 1: Initial Warning -->
+                    <p class="warning-message">@T.Translate("users.import.confirmMessage")</p>
+
+                    <div class="backup-hint">
+                        <Blazicon Svg="Lucide.Info" class="w-4 h-4" />
+                        <span>@T.Translate("users.import.backupHint")</span>
+                    </div>
+                }
+                else if (currentPhase == ImportPhase.Validation)
+                {
+                    <!-- Phase 2: Validation Results -->
+                    @if (ValidationResult != null)
+                    {
+                        <div class="validation-info">
+                            <div class="info-row">
+                                <span class="label">@T.Translate("users.import.newUsers"):</span>
+                                <span class="value success">@ValidationResult.NewUserCount</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">@T.Translate("users.import.existingUsers"):</span>
+                                <span class="value warning">@ValidationResult.ExistingUserCount</span>
+                            </div>
+
+                            @if (ValidationResult.Warnings.Count > 0)
+                            {
+                                <div class="incompatible-section">
+                                    <div class="info-row">
+                                        <span class="label">@T.Translate("users.import.warnings"):</span>
+                                        <span class="value warning">@ValidationResult.Warnings.Count</span>
+                                    </div>
+                                    <div class="incompatible-list">
+                                        @foreach (var warning in ValidationResult.Warnings.Take(5))
+                                        {
+                                            <span class="incompatible-field">@warning</span>
+                                        }
+                                        @if (ValidationResult.Warnings.Count > 5)
+                                        {
+                                            <span class="more-fields">+@(ValidationResult.Warnings.Count - 5) @T.Translate("common.more")</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="password-note">
+                            <Blazicon Svg="Lucide.Key" class="w-4 h-4" />
+                            <span>@T.Translate("users.import.passwordNote")</span>
+                        </div>
+
+                        <p class="confirm-question">@T.Translate("users.import.proceedQuestion")</p>
+                    }
+                }
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-secondary" @onclick="OnCancel">
+                    @T.Translate("common.cancel")
+                </button>
+
+                @if (currentPhase == ImportPhase.Warning)
+                {
+                    <button class="btn btn-outline-primary" @onclick="OnExportFirst">
+                        <Blazicon Svg="Lucide.Download" class="w-4 h-4 mr-1" />
+                        @T.Translate("users.import.exportFirst")
+                    </button>
+                    <button class="btn btn-warning" @onclick="SelectFile">
+                        <Blazicon Svg="Lucide.FolderOpen" class="w-4 h-4 mr-1" />
+                        @T.Translate("users.import.selectFile")
+                    </button>
+                }
+                else if (currentPhase == ImportPhase.Validation)
+                {
+                    <button class="btn btn-warning" @onclick="OnConfirm">
+                        <Blazicon Svg="Lucide.Upload" class="w-4 h-4 mr-1" />
+                        @T.Translate("users.import.confirmImport")
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Hidden file input -->
+<input type="file"
+       @ref="fileInput"
+       id="importUsersFileInput"
+       accept=".json"
+       style="display: none;"
+       @onchange="OnFileSelected" />
+
+@code {
+    private enum ImportPhase { Warning, Validation }
+    private ImportPhase currentPhase = ImportPhase.Warning;
+    private ElementReference fileInput;
+
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public UsersImportValidation? ValidationResult { get; set; }
+    [Parameter] public EventCallback<string> OnFileLoaded { get; set; }
+    [Parameter] public EventCallback OnConfirmed { get; set; }
+    [Parameter] public EventCallback OnExportFirstRequested { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // When ValidationResult is set, move to validation phase
+        if (ValidationResult != null && currentPhase == ImportPhase.Warning)
+        {
+            currentPhase = ImportPhase.Validation;
+        }
+
+        // Reset phase when dialog is hidden
+        if (!IsVisible)
+        {
+            currentPhase = ImportPhase.Warning;
+        }
+    }
+
+    private async Task SelectFile()
+    {
+        await JS.InvokeVoidAsync("triggerFileInput", "importUsersFileInput");
+    }
+
+    private async Task OnFileSelected(ChangeEventArgs e)
+    {
+        try
+        {
+            var json = await JS.InvokeAsync<string>("readFileAsText", "importUsersFileInput");
+            if (!string.IsNullOrEmpty(json))
+            {
+                await OnFileLoaded.InvokeAsync(json);
+            }
+        }
+        catch
+        {
+            // File read error will be handled by parent
+        }
+    }
+
+    private async Task OnConfirm()
+    {
+        await OnConfirmed.InvokeAsync();
+    }
+
+    private async Task OnExportFirst()
+    {
+        await OnExportFirstRequested.InvokeAsync();
+    }
+
+    private async Task OnCancel()
+    {
+        currentPhase = ImportPhase.Warning;
+        await OnCancelled.InvokeAsync();
+    }
+}
