@@ -30,88 +30,87 @@
                 </button>
             }
 
-            <!-- System Status -->
+            <!-- System Status (immer sichtbar) -->
             <div class="header-status">
                 <span class="status-label">@T.Translate("header.robot")</span>
                 <div class="status-indicator @(RobotService.IsConnected ? "status-online" : "status-offline")"></div>
             </div>
 
-            <!-- Zeit und Datum -->
+            <!-- Zeit und Datum (immer sichtbar) -->
             <div class="header-time">
                 <div class="time-display">@currentTime</div>
                 <div class="date-display">@currentDate</div>
             </div>
 
-            <!-- Navigation Menu - Touch Optimized -->
-            <div class="header-nav">
-                @if (showNavigationMenu)
-                {
-                    <div class="nav-buttons">
-                        <!-- Dashboard Button -->
-                        <button @onclick='() => NavigateTo("/")'
-                                class="robot-control-btn btn-icon @GetNavButtonClass("/")"
-                                title="@T.Translate("header.dashboard")">
-                            <Blazicon Svg="Lucide.House" class="w-5 h-5" />
-                        </button>
+            <!-- Navigation Buttons (animiert) -->
+            <div class="nav-buttons-container @(showNavigationMenu ? "nav-open" : "nav-closed")">
+                <div class="nav-buttons">
+                    <!-- Dashboard Button -->
+                    <button @onclick='() => NavigateTo("/")'
+                            class="robot-control-btn btn-icon @GetNavButtonClass("/")"
+                            title="@T.Translate("header.dashboard")">
+                        <Blazicon Svg="Lucide.LayoutGrid" class="w-5 h-5" />
+                    </button>
 
-                        <!-- Settings Button -->
-                        <button @onclick='() => NavigateTo("/settings")'
-                                class="robot-control-btn btn-icon @GetNavButtonClass("/settings")"
-                                title="@T.Translate("header.settings")">
-                            <Blazicon Svg="Lucide.Settings" class="w-5 h-5" />
-                        </button>
+                    <!-- Settings Button -->
+                    <button @onclick='() => NavigateTo("/settings")'
+                            class="robot-control-btn btn-icon @GetNavButtonClass("/settings")"
+                            title="@T.Translate("header.settings")">
+                        <Blazicon Svg="Lucide.Settings" class="w-5 h-5" />
+                    </button>
 
-                        <!-- Maintenance Button -->
-                        <button @onclick='() => NavigateTo("/maintenance")'
-                                class="robot-control-btn btn-icon @GetNavButtonClass("/maintenance")"
-                                title="@T.Translate("header.maintenance")">
-                            <Blazicon Svg="Lucide.Wrench" class="w-5 h-5" />
-                        </button>
+                    <!-- Maintenance Button -->
+                    <button @onclick='() => NavigateTo("/maintenance")'
+                            class="robot-control-btn btn-icon @GetNavButtonClass("/maintenance")"
+                            title="@T.Translate("header.maintenance")">
+                        <Blazicon Svg="Lucide.Wrench" class="w-5 h-5" />
+                    </button>
 
-                        <!-- User Button -->
-                        @if (AuthState.IsAuthenticated)
-                        {
-                            <div class="header-user">
-                                <button @onclick="ToggleUserMenu"
-                                        class="robot-control-btn btn-icon btn-primary"
-                                        title="@(AuthState.CurrentUser?.Name ?? AuthState.CurrentUser?.PersonalNumber)">
-                                    <Blazicon Svg="Lucide.User" class="w-5 h-5" />
-                                </button>
+                    <!-- User Button -->
+                    @if (AuthState.IsAuthenticated)
+                    {
+                        <div class="header-user">
+                            <button @onclick="ToggleUserMenu"
+                                    class="robot-control-btn btn-icon btn-primary"
+                                    title="@(AuthState.CurrentUser?.Name ?? AuthState.CurrentUser?.PersonalNumber)">
+                                <Blazicon Svg="Lucide.User" class="w-5 h-5" />
+                            </button>
 
-                                @if (_showUserMenu)
-                                {
-                                    <div class="user-dropdown glass-card">
-                                        <div class="dropdown-header">
-                                            <div class="dropdown-name">@(AuthState.CurrentUser?.Name ?? AuthState.CurrentUser?.PersonalNumber)</div>
-                                            <div class="dropdown-role">@GetRoleDisplayName(AuthState.CurrentUser?.Role)</div>
-                                        </div>
-                                        @if (Authorization.IsAdmin())
-                                        {
-                                            <button @onclick="NavigateToUserManagement"
-                                                    class="dropdown-item">
-                                                <Blazicon Svg="Lucide.Users" class="w-5 h-5" />
-                                                <span>@T.Translate("header.userManagement")</span>
-                                            </button>
-                                            <div class="dropdown-divider"></div>
-                                        }
-                                        <button @onclick="Logout"
-                                                class="dropdown-item dropdown-item-danger">
-                                            <Blazicon Svg="Lucide.LogOut" class="w-5 h-5" />
-                                            <span>@T.Translate("header.logout")</span>
-                                        </button>
+                            @if (_showUserMenu || _isUserMenuClosing)
+                            {
+                                <div class="user-dropdown @(_isUserMenuClosing ? "closing" : "") glass-card">
+                                    <div class="dropdown-header">
+                                        <div class="dropdown-name">@(AuthState.CurrentUser?.Name ?? AuthState.CurrentUser?.PersonalNumber)</div>
+                                        <div class="dropdown-role">@GetRoleDisplayName(AuthState.CurrentUser?.Role)</div>
                                     </div>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
-
-                <!-- Menu Toggle Button -->
-                <button @onclick="ToggleNavigationMenu"
-                        class="robot-control-btn btn-icon btn-primary">
-                    <Blazicon Svg="Lucide.Menu" class="w-5 h-5" />
-                </button>
+                                    @if (Authorization.IsAdmin())
+                                    {
+                                        <button @onclick="NavigateToUserManagement"
+                                                class="dropdown-item">
+                                            <Blazicon Svg="Lucide.Users" class="w-5 h-5" />
+                                            <span>@T.Translate("header.userManagement")</span>
+                                        </button>
+                                        <div class="dropdown-divider"></div>
+                                    }
+                                    <button @onclick="Logout"
+                                            class="dropdown-item dropdown-item-danger">
+                                        <Blazicon Svg="Lucide.LogOut" class="w-5 h-5" />
+                                        <span>@T.Translate("header.logout")</span>
+                                    </button>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
             </div>
+
+            <!-- Menu Toggle Button -->
+            <button @onclick="ToggleNavigationMenu"
+                    class="robot-control-btn btn-icon btn-primary">
+                <div class="menu-icon-wrapper @(showNavigationMenu ? "menu-open" : "")">
+                    <Blazicon Svg="Lucide.Menu" class="w-5 h-5" />
+                </div>
+            </button>
         </div>
     </div>
 </header>
@@ -122,6 +121,7 @@
     private bool showNavigationMenu = false;
     private bool hasActiveError = false;
     private bool _showUserMenu = false;
+    private bool _isUserMenuClosing = false;
     private System.Threading.Timer? timer;
 
     protected override void OnInitialized()
@@ -166,27 +166,44 @@
         _showUserMenu = false;
     }
 
-    private void ToggleUserMenu()
+    private async Task ToggleUserMenu()
     {
-        _showUserMenu = !_showUserMenu;
+        if (_showUserMenu)
+        {
+            await CloseUserMenuAnimated();
+        }
+        else
+        {
+            _showUserMenu = true;
+        }
     }
 
-    private void NavigateTo(string path)
+    private async Task CloseUserMenuAnimated()
     {
-        showNavigationMenu = false;
+        if (_isUserMenuClosing) return;
+        _isUserMenuClosing = true;
         _showUserMenu = false;
+        StateHasChanged();
+        await Task.Delay(200);
+        _isUserMenuClosing = false;
+    }
+
+    private async Task NavigateTo(string path)
+    {
+        @* showNavigationMenu = false; *@
+        if (_showUserMenu) await CloseUserMenuAnimated();
         Navigation.NavigateTo(path);
     }
 
-    private void NavigateToUserManagement()
+    private async Task NavigateToUserManagement()
     {
-        _showUserMenu = false;
+        await CloseUserMenuAnimated();
         Navigation.NavigateTo("/users");
     }
 
     private async Task Logout()
     {
-        _showUserMenu = false;
+        await CloseUserMenuAnimated();
         await AuthState.LogoutAsync();
         Navigation.NavigateTo("/login");
     }

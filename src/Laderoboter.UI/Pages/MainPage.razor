@@ -89,10 +89,14 @@
                         Palette1Mode="@Palette1Mode"
                         Palette2Workpieces="@Palette2Workpieces"
                         Palette2Mode="@Palette2Mode"
+                        ShelfWorkpieces="@ShelfWorkpieces"
+                        ShelfMode="@ShelfMode"
                         OnPalette1Reset="ResetPalette1"
                         OnPalette2Reset="ResetPalette2"
+                        OnShelfReset="ResetShelf"
                         OnPalette1ToggleMode="TogglePalette1Mode"
                         OnPalette2ToggleMode="TogglePalette2Mode"
+                        OnShelfToggleMode="ToggleShelfMode"
                         OnWorkpieceClick="OnWorkpieceClick" />
                 </div>
 
@@ -149,6 +153,10 @@
     private PaletteMode Palette1Mode = PaletteMode.Active;
     private PaletteMode Palette2Mode = PaletteMode.Active;
 
+    // Shelf data (7x4 = 28 positions)
+    private List<WorkpieceStatus> ShelfWorkpieces = new();
+    private Laderoboter.UI.Components.Main.ShelfCard.ShelfMode ShelfMode = Laderoboter.UI.Components.Main.ShelfCard.ShelfMode.Active;
+
     // Wechselmodus state
     private bool showChangeModeConfirmDialog = false;
     private bool showEndChangeModeDialog = false;
@@ -170,6 +178,7 @@
     // Subscriptions für RobotMonitor
     private IDisposable? _palette1Subscription;
     private IDisposable? _palette2Subscription;
+    private IDisposable? _shelfSubscription;
     private bool _eventHandlerRegistered = false;
 
     protected override async Task OnInitializedAsync()
@@ -190,8 +199,10 @@
         // Subscribe zu RobotMonitor Palette Changes (alte Subscriptions werden in Dispose aufgeräumt)
         _palette1Subscription?.Dispose();
         _palette2Subscription?.Dispose();
+        _shelfSubscription?.Dispose();
         _palette1Subscription = RobotMonitor.Palette1Changes.Subscribe(OnPalette1Changed);
         _palette2Subscription = RobotMonitor.Palette2Changes.Subscribe(OnPalette2Changed);
+        _shelfSubscription = RobotMonitor.ShelfChanges.Subscribe(OnShelfChanged);
 
         // Initialize palette data
         InitializePaletteData();
@@ -230,6 +241,17 @@
             Position = i,
             State = WorkpieceState.Unused,
             RegisterAddress = 58 + (i - 1),  // R[58-65] wenn Programm läuft, R[158-165] wenn nicht
+            SequenceNumber = 0
+        }).ToList();
+
+        // Initialize shelf with 28 workpieces (7 rows x 4 columns)
+        // Register: R[66-93] wenn Programm läuft, R[166-193] wenn nicht
+        // Position mapping: Regal_1_1 = Position 1 = R66, Regal_7_4 = Position 28 = R93
+        ShelfWorkpieces = Enumerable.Range(1, 28).Select(i => new WorkpieceStatus
+        {
+            Position = i,
+            State = WorkpieceState.Unused,
+            RegisterAddress = 66 + (i - 1),  // R[66-93] wenn Programm läuft, R[166-193] wenn nicht
             SequenceNumber = 0
         }).ToList();
     }
@@ -276,6 +298,17 @@
 
         // NICHT automatisch Mode aus Snapshot übernehmen - Mode wird nur durch User-Aktion geändert
         // Palette2Mode = snapshot.IsActive ? PaletteMode.Active : PaletteMode.Change;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnShelfChanged(ShelfSnapshot snapshot)
+    {
+        // Update Shelf from Monitor snapshot
+        for (int i = 0; i < snapshot.States.Count && i < ShelfWorkpieces.Count; i++)
+        {
+            ShelfWorkpieces[i].State = snapshot.States[i];
+        }
 
         InvokeAsync(StateHasChanged);
     }
@@ -327,16 +360,19 @@
         // Register-Layout:
         // - R[50-57]:   Palette 1 (Position 1-8) wenn Programm läuft
         // - R[58-65]:   Palette 2 (Position 1-8) wenn Programm läuft
+        // - R[66-93]:   Regal (Position 1-28, Regal_1_1 bis Regal_7_4) wenn Programm läuft
         // - R[150-157]: Palette 1 (Position 1-8) wenn Programm NICHT läuft
         // - R[158-165]: Palette 2 (Position 1-8) wenn Programm NICHT läuft
+        // - R[166-193]: Regal (Position 1-28) wenn Programm NICHT läuft
 
         bool programRunning = RobotService.Status.IsRunning;
 
         // Wähle den richtigen Register-Bereich basierend auf Programm-Status
-        int baseAddress = programRunning ? 50 : 150;
+        int paletteBaseAddress = programRunning ? 50 : 150;
+        int shelfBaseAddress = programRunning ? 66 : 166;
 
         // Lese alle 16 Palette-Werte in einem Batch (Palette 1 + Palette 2)
-        var paletteValues = await RobotService.ReadRegistersAsync(baseAddress, 16);
+        var paletteValues = await RobotService.ReadRegistersAsync(paletteBaseAddress, 16);
         if (paletteValues != null)
         {
             // Erste 8 Werte: Palette 1
@@ -348,6 +384,16 @@
             for (int i = 0; i < 8 && i < Palette2Workpieces.Count; i++)
             {
                 Palette2Workpieces[i].State = (WorkpieceState)paletteValues[8 + i];
+            }
+        }
+
+        // Lese alle 28 Regal-Werte
+        var shelfValues = await RobotService.ReadRegistersAsync(shelfBaseAddress, 28);
+        if (shelfValues != null)
+        {
+            for (int i = 0; i < 28 && i < ShelfWorkpieces.Count; i++)
+            {
+                ShelfWorkpieces[i].State = (WorkpieceState)shelfValues[i];
             }
         }
 
@@ -371,6 +417,7 @@
         // Der Wechselmodus wird nur durch explizite User-Aktion aktiviert
         Palette1Mode = PaletteMode.Active;
         Palette2Mode = PaletteMode.Active;
+        ShelfMode = Laderoboter.UI.Components.Main.ShelfCard.ShelfMode.Active;
 
         StateHasChanged();
     }
@@ -807,6 +854,49 @@
         await ResetAllPartsInPalette(2);
     }
 
+    private async Task ResetShelf()
+    {
+        await ResetAllPartsInShelf();
+    }
+
+    /// <summary>
+    /// Setzt alle Werkstücke im Regal auf Status 2 (Unprocessed/Bereit)
+    /// </summary>
+    private async Task ResetAllPartsInShelf()
+    {
+        // Setze alle Werkstücke auf Status 2 (Unprocessed)
+        foreach (var workpiece in ShelfWorkpieces)
+        {
+            // Schreibe in R166-193 Bereich (nicht R66-93)
+            var targetAddress = workpiece.RegisterAddress >= 66 && workpiece.RegisterAddress <= 93
+                ? workpiece.RegisterAddress + 100
+                : workpiece.RegisterAddress;
+
+            await RobotService.WriteRegisterAsync(targetAddress, (int)WorkpieceState.Unprocessed);
+
+            // Aktualisiere lokalen State
+            workpiece.State = WorkpieceState.Unprocessed;
+        }
+
+        // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
+        if (!RobotService.Status.IsRunning)
+        {
+            await RobotService.WriteRegisterAsync(148, 1);
+        }
+
+        StateHasChanged();
+    }
+
+    private void ToggleShelfMode()
+    {
+        // TODO: Implementiere Wechselmodus für Regal (analog zu Paletten)
+        // Vorerst einfaches Toggle
+        ShelfMode = ShelfMode == Laderoboter.UI.Components.Main.ShelfCard.ShelfMode.Active
+            ? Laderoboter.UI.Components.Main.ShelfCard.ShelfMode.Change
+            : Laderoboter.UI.Components.Main.ShelfCard.ShelfMode.Active;
+        StateHasChanged();
+    }
+
     private void OnWorkpieceClick(WorkpieceStatus workpiece)
     {
         selectedWorkpiece = workpiece;
@@ -841,5 +931,6 @@
         }
         _palette1Subscription?.Dispose();
         _palette2Subscription?.Dispose();
+        _shelfSubscription?.Dispose();
     }
 }

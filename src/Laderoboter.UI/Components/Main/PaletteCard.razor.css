@@ -3,7 +3,7 @@
    =========================================== */
 
 .palette-card {
-    overflow: hidden;
+    overflow: visible;
     min-height: 0;
 }
 
@@ -58,7 +58,7 @@
     padding: 0.5rem;
     position: relative;
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* Processing banner */

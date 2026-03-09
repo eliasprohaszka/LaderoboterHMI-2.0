@@ -20,6 +20,9 @@ public interface IRobotMonitor : IDisposable
     /// <summary>Stream der Palette 2 Änderungen</summary>
     IObservable<PaletteSnapshot> Palette2Changes { get; }
 
+    /// <summary>Stream der Regal Änderungen (7x4 Grid, 28 Positionen)</summary>
+    IObservable<ShelfSnapshot> ShelfChanges { get; }
+
     /// <summary>Stream des Robot-Status</summary>
     IObservable<RobotStatus> StatusChanges { get; }
 
@@ -29,11 +32,25 @@ public interface IRobotMonitor : IDisposable
     /// <summary>Ist das Monitoring aktiv?</summary>
     bool IsMonitoring { get; }
 
+    /// <summary>Aktuelle Ansicht (Palette oder Shelf) - bestimmt welche Register gepollt werden</summary>
+    MonitorView CurrentView { get; set; }
+
     /// <summary>Startet das Monitoring</summary>
     void Start();
 
     /// <summary>Stoppt das Monitoring</summary>
     void Stop();
+}
+
+/// <summary>
+/// Bestimmt welche Register-Gruppe gepollt wird
+/// </summary>
+public enum MonitorView
+{
+    /// <summary>Palette 1 & 2 Register (R50-65 / R150-165)</summary>
+    Palette,
+    /// <summary>Regal Register (R66-93 / R166-193)</summary>
+    Shelf
 }
 
 /// <summary>
@@ -54,6 +71,18 @@ public record PaletteSnapshot(
     int PaletteNumber,
     IReadOnlyList<WorkpieceState> States,
     IReadOnlyList<int> SequenceNumbers,
+    int Mode,
+    bool IsActive,
+    DateTime Timestamp
+);
+
+/// <summary>
+/// Snapshot des Regals mit allen 28 Workpiece-Zuständen (7x4 Grid)
+/// Register: R66-R93 (Runtime) oder R166-R193 (Idle)
+/// Position-Mapping: Regal_1_1 = R66/R166, Regal_7_4 = R93/R193
+/// </summary>
+public record ShelfSnapshot(
+    IReadOnlyList<WorkpieceState> States,
     int Mode,
     bool IsActive,
     DateTime Timestamp
@@ -88,6 +117,7 @@ public class RobotMonitor : IRobotMonitor
     private readonly Subject<RegisterChange> _registerChanges = new();
     private readonly Subject<PaletteSnapshot> _palette1Changes = new();
     private readonly Subject<PaletteSnapshot> _palette2Changes = new();
+    private readonly Subject<ShelfSnapshot> _shelfChanges = new();
     private readonly Subject<RobotStatus> _statusChanges = new();
     private readonly Subject<MonitorError> _errors = new();
 
@@ -97,6 +127,7 @@ public class RobotMonitor : IRobotMonitor
 
     private PaletteSnapshot? _lastPalette1;
     private PaletteSnapshot? _lastPalette2;
+    private ShelfSnapshot? _lastShelf;
     private RobotStatus? _lastStatus;
 
     private IDisposable? _monitorSubscription;
@@ -104,11 +135,16 @@ public class RobotMonitor : IRobotMonitor
     private bool _disposed;
     private volatile bool _isStopping;
 
+    // Aktuelle View - bestimmt welche Register gepollt werden
+    private MonitorView _currentView = MonitorView.Palette;
+
     // Register-Layout:
     // - 50-57:   Palette 1 Workpiece States (Position 1-8) - wenn Programm läuft
     // - 58-65:   Palette 2 Workpiece States (Position 1-8) - wenn Programm läuft
+    // - 66-93:   Regal Workpiece States (Regal_1_1 bis Regal_7_4, 28 Positionen) - wenn Programm läuft
     // - 150-157: Palette 1 Workpiece States (Position 1-8) - wenn Programm NICHT läuft
     // - 158-165: Palette 2 Workpiece States (Position 1-8) - wenn Programm NICHT läuft
+    // - 166-193: Regal Workpiece States (28 Positionen) - wenn Programm NICHT läuft
 
     // Statische Register-Gruppen (immer abfragen)
     private static readonly RegisterGroup[] StaticRegisterGroups =
@@ -129,6 +165,10 @@ public class RobotMonitor : IRobotMonitor
     private static readonly RegisterGroup PaletteRuntimeGroup = new("PaletteRuntime", 50, 16, TimeSpan.FromMilliseconds(200));
     private static readonly RegisterGroup PaletteIdleGroup = new("PaletteIdle", 150, 16, TimeSpan.FromMilliseconds(200));
 
+    // Dynamische Regal-Gruppen (abhängig von Programm-Status)
+    private static readonly RegisterGroup ShelfRuntimeGroup = new("ShelfRuntime", 66, 28, TimeSpan.FromMilliseconds(200));
+    private static readonly RegisterGroup ShelfIdleGroup = new("ShelfIdle", 166, 28, TimeSpan.FromMilliseconds(200));
+
     public RobotMonitor(IRobotService robotService, ISettingsService settings)
     {
         _robotService = robotService;
@@ -138,10 +178,17 @@ public class RobotMonitor : IRobotMonitor
     public IObservable<RegisterChange> RegisterChanges => _registerChanges.AsObservable();
     public IObservable<PaletteSnapshot> Palette1Changes => _palette1Changes.AsObservable();
     public IObservable<PaletteSnapshot> Palette2Changes => _palette2Changes.AsObservable();
+    public IObservable<ShelfSnapshot> ShelfChanges => _shelfChanges.AsObservable();
     public IObservable<RobotStatus> StatusChanges => _statusChanges.AsObservable();
     public IObservable<MonitorError> Errors => _errors.AsObservable();
 
     public bool IsMonitoring => _monitorSubscription != null;
+
+    public MonitorView CurrentView
+    {
+        get => _currentView;
+        set => _currentView = value;
+    }
 
     public void Start()
     {
@@ -208,13 +255,25 @@ public class RobotMonitor : IRobotMonitor
 
         var allChanges = new List<RegisterChange>();
 
-        // 1. Palette-Register basierend auf Programm-Status (NUR EINE Gruppe)
-        var paletteGroup = _robotService.Status.IsRunning ? PaletteRuntimeGroup : PaletteIdleGroup;
-        var paletteChanges = await PollRegisterGroupAsync(paletteGroup, cancellationToken);
-        if (cancellationToken.IsCancellationRequested) return allChanges;
-        allChanges.AddRange(paletteChanges);
+        // Nur die Register der aktuellen View pollen (spart Payload)
+        if (_currentView == MonitorView.Palette)
+        {
+            // Palette-Register basierend auf Programm-Status
+            var paletteGroup = _robotService.Status.IsRunning ? PaletteRuntimeGroup : PaletteIdleGroup;
+            var paletteChanges = await PollRegisterGroupAsync(paletteGroup, cancellationToken);
+            if (cancellationToken.IsCancellationRequested) return allChanges;
+            allChanges.AddRange(paletteChanges);
+        }
+        else
+        {
+            // Regal-Register basierend auf Programm-Status
+            var shelfGroup = _robotService.Status.IsRunning ? ShelfRuntimeGroup : ShelfIdleGroup;
+            var shelfChanges = await PollRegisterGroupAsync(shelfGroup, cancellationToken);
+            if (cancellationToken.IsCancellationRequested) return allChanges;
+            allChanges.AddRange(shelfChanges);
+        }
 
-        // 2. Statische Register-Gruppen sequentiell abfragen
+        // Statische Register-Gruppen sequentiell abfragen (immer benötigt)
         foreach (var group in StaticRegisterGroups)
         {
             if (cancellationToken.IsCancellationRequested) break;
@@ -297,6 +356,12 @@ public class RobotMonitor : IRobotMonitor
                  (!programRunning && change.Address is >= 158 and <= 165))
         {
             EmitPalette2Snapshot();
+        }
+        // Regal Register (66-93 wenn läuft, 166-193 wenn nicht läuft)
+        else if ((programRunning && change.Address is >= 66 and <= 93) ||
+                 (!programRunning && change.Address is >= 166 and <= 193))
+        {
+            EmitShelfSnapshot();
         }
         // Sequence Register (101-116)
         else if (change.Address is >= 101 and <= 116)
@@ -382,6 +447,41 @@ public class RobotMonitor : IRobotMonitor
         }
     }
 
+    private void EmitShelfSnapshot()
+    {
+        // Prüfe ob Programm läuft (basierend auf RobotService Status)
+        bool programRunning = _robotService.Status.IsRunning;
+
+        // Wähle die richtigen Register basierend auf Programm-Status
+        // Runtime: 66-93 (28 Register), Idle: 166-193 (28 Register)
+        int baseAddress = programRunning ? 66 : 166;
+
+        var states = Enumerable.Range(baseAddress, 28)
+            .Select(addr => (WorkpieceState)_registerCache.GetValueOrDefault(addr, 0))
+            .ToList();
+
+        // Regal hat aktuell kein separates Mode-Register - verwende Standard
+        var mode = 0;
+
+        var snapshot = new ShelfSnapshot(
+            states, mode, mode == 1, DateTime.UtcNow
+        );
+
+        if (!ShelfSnapshotsEqual(_lastShelf, snapshot))
+        {
+            _lastShelf = snapshot;
+            _shelfChanges.OnNext(snapshot);
+        }
+    }
+
+    private static bool ShelfSnapshotsEqual(ShelfSnapshot? a, ShelfSnapshot? b)
+    {
+        if (a == null || b == null) return false;
+        return a.Mode == b.Mode &&
+               a.IsActive == b.IsActive &&
+               a.States.SequenceEqual(b.States);
+    }
+
     private void EmitStatusChange()
     {
         var status = new RobotStatus
@@ -425,6 +525,7 @@ public class RobotMonitor : IRobotMonitor
         _registerChanges.Dispose();
         _palette1Changes.Dispose();
         _palette2Changes.Dispose();
+        _shelfChanges.Dispose();
         _statusChanges.Dispose();
         _errors.Dispose();
 

@@ -4,6 +4,7 @@
 @inject IRobotService RobotService
 @inject ISystemService SystemService
 @inject ITranslationService T
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <div class="h-full">
@@ -12,6 +13,11 @@
         <!-- Header -->
         <div class="maintenance-header">
             <div class="header-content">
+                <button
+                    class="p-2 transition-colors"
+                    @onclick="NavigateBack">
+                    <Blazicon Svg="Lucide.ArrowLeft" class="w-5 h-5 text-gray-600" />
+                </button>
                 <div class="header-icon-wrapper">
                     <Blazicon Svg="Lucide.Wrench" class="header-icon" />
                 </div>
@@ -381,6 +387,11 @@
     {
         await RobotService.ResetAsync();
         hasActiveError = false;
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/");
     }
 
     public void Dispose()

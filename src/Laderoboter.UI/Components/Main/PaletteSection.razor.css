@@ -9,8 +9,8 @@
     flex-direction: column;
     height: 100%;
     width: 100%;
-    padding: 0.25rem;
-    overflow: hidden;
+    padding: 0.5rem;
+    overflow: visible;
 }
 
 /* Toggle header - fixed height, doesn't grow */
@@ -60,7 +60,7 @@
     flex: 1 1 0%;
     min-height: 0;
     height: 0;
-    overflow: hidden;
+    overflow: visible;
 }
 
 /* Two-row palette grid - MUST fill parent height */
@@ -76,7 +76,7 @@
 /* Ensure grid children fill their cells */
 .palette-grid > * {
     min-height: 0;
-    overflow: hidden;
+    overflow: visible;
     height: 100%;
 }
 
@@ -84,5 +84,5 @@
 .shelf-container {
     height: 100%;
     width: 100%;
-    overflow: hidden;
+    overflow: visible;
 }

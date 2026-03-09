@@ -9,6 +9,38 @@
     transform: rotate(90deg);
 }
 
+/* Dropdown menu animation */
+.dropdown-menu {
+    animation: dropdownOpen 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    transform-origin: top right;
+}
+
+.dropdown-menu.closing {
+    animation: dropdownClose 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes dropdownOpen {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes dropdownClose {
+    from {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: scale(0.95) translateY(-8px);
+    }
+}
+
 ::deep .dropdown-item {
     width: 100%;
     padding: 0.75rem 1rem;

@@ -12,13 +12,13 @@
     </button>
 
     <!-- Dropdown Menu -->
-    @if (isOpen)
+    @if (isOpen || _isClosing)
     {
         <!-- Backdrop -->
-        <div class="fixed inset-0 z-40" @onclick="CloseMenu"></div>
+        <div class="fixed inset-0 z-40" @onclick="CloseMenuAnimated"></div>
 
         <!-- Menu -->
-        <div class="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden min-w-[200px] z-50">
+        <div class="dropdown-menu @(_isClosing ? "closing" : "") absolute right-0 top-full mt-2 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden min-w-[200px] z-50">
             @ChildContent
         </div>
     }
@@ -29,20 +29,32 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private bool isOpen = false;
+    private bool _isClosing = false;
 
-    private void ToggleMenu()
+    private async Task ToggleMenu()
     {
-        isOpen = !isOpen;
+        if (isOpen)
+        {
+            await CloseMenuAnimated();
+        }
+        else
+        {
+            isOpen = true;
+        }
     }
 
-    private void CloseMenu()
+    private async Task CloseMenuAnimated()
     {
+        if (_isClosing) return;
+        _isClosing = true;
         isOpen = false;
+        StateHasChanged();
+        await Task.Delay(200);
+        _isClosing = false;
     }
 
     public void Close()
     {
-        isOpen = false;
-        StateHasChanged();
+        _ = CloseMenuAnimated();
     }
 }

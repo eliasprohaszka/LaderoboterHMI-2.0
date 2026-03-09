@@ -20,6 +20,7 @@ public static class ServiceCollectionExtensions
 
         services.AddScoped<ISettingsService, SettingsService>();
         services.AddScoped<IErrorLogService, ErrorLogService>();
+        services.AddSingleton<IRobotRequestQueue, RobotRequestQueue>();
         services.AddSingleton<IRobotService, RobotService>();
         services.AddSingleton<IRobotMonitor, RobotMonitor>();
         services.AddSingleton<ISystemService, SystemService>();

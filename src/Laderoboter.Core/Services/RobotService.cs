@@ -11,6 +11,7 @@ namespace Laderoboter.Core.Services;
 public class RobotService : IRobotService
 {
     private readonly IErrorLogService _errorLog;
+    private readonly IRobotRequestQueue _requestQueue;
     private FanucRobot? _robot;
     private bool _disposed;
     private bool _isConnected;
@@ -25,11 +26,16 @@ public class RobotService : IRobotService
     // Batch Assignments für schnelles Lesen (dynamic type um API-Kompatibilität zu gewährleisten)
     private dynamic? _paletteRuntimeBatch;  // R[50-65]: Runtime palette values
     private dynamic? _paletteIdleBatch;     // R[150-165]: Idle palette values
+    private dynamic? _shelfRuntimeBatch;    // R[66-93]: Runtime shelf values (28 positions)
+    private dynamic? _shelfIdleBatch;       // R[166-193]: Idle shelf values (28 positions)
     private dynamic? _sequenceBatch;        // R[101-116]: Sequence numbers
 
     // Register addresses (from old app)
     private const int PALETTE_RUNTIME_START = 50;   // 50-65: Palette 1 & 2 wenn Programm läuft
     private const int PALETTE_IDLE_START = 150;     // 150-165: Palette 1 & 2 wenn Programm NICHT läuft
+    private const int SHELF_RUNTIME_START = 66;     // 66-93: Regal (7x4=28 Positionen) wenn Programm läuft
+    private const int SHELF_IDLE_START = 166;       // 166-193: Regal wenn Programm NICHT läuft
+    private const int SHELF_POSITION_COUNT = 28;    // 7 Reihen x 4 Spalten = 28 Positionen
     private const int SEQUENCE_START = 101;
     private const int MODE_REGISTER_1 = 48;
     private const int MODE_REGISTER_2 = 148;
@@ -42,9 +48,10 @@ public class RobotService : IRobotService
     private const int PALETTE_DOOR1_REGISTER_1 = 87;
     private const int PALETTE_DOOR1_REGISTER_2 = 187;
 
-    public RobotService(ISettingsService settings, IErrorLogService errorLog)
+    public RobotService(ISettingsService settings, IErrorLogService errorLog, IRobotRequestQueue requestQueue)
     {
         _errorLog = errorLog;
+        _requestQueue = requestQueue;
         Status = new RobotStatus();
         Palette1 = new PaletteData { PaletteNumber = 1 };
         Palette2 = new PaletteData { PaletteNumber = 2 };
@@ -84,6 +91,12 @@ public class RobotService : IRobotService
             // Batch für Idle Palette Werte: R[150-165] (16 Register)
             _paletteIdleBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(PALETTE_IDLE_START, 16);
 
+            // Batch für Runtime Shelf Werte: R[66-93] (28 Register)
+            _shelfRuntimeBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(SHELF_RUNTIME_START, SHELF_POSITION_COUNT);
+
+            // Batch für Idle Shelf Werte: R[166-193] (28 Register)
+            _shelfIdleBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(SHELF_IDLE_START, SHELF_POSITION_COUNT);
+
             // Batch für Sequence: R[101-116] (16 Register)
             _sequenceBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(SEQUENCE_START, 16);
         }
@@ -98,6 +111,8 @@ public class RobotService : IRobotService
     {
         _paletteRuntimeBatch = null;
         _paletteIdleBatch = null;
+        _shelfRuntimeBatch = null;
+        _shelfIdleBatch = null;
         _sequenceBatch = null;
     }
 
@@ -358,206 +373,238 @@ public class RobotService : IRobotService
     {
         if (_robot == null || !IsConnected) return Task.FromResult<int?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            // Erstelle einen neuen BatchAssignment für einen einzelnen Read
-            // Dies umgeht mögliches Caching im SDK
-            var batch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(address, 1);
-            float[] values = batch.Read();
-
-            if (values != null && values.Length > 0)
+            try
             {
-                return Task.FromResult<int?>((int)values[0]);
-            }
+                // Erstelle einen neuen BatchAssignment für einen einzelnen Read
+                // Dies umgeht mögliches Caching im SDK
+                var batch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(address, 1);
+                float[] values = batch.Read();
 
-            // Fallback zum direkten Read
-            float value = _robot.Snpx.NumericRegisters.Read(address);
-            return Task.FromResult<int?>((int)value);
-        }
-        catch
-        {
-            return Task.FromResult<int?>(null);
-        }
+                if (values != null && values.Length > 0)
+                {
+                    return (int?)((int)values[0]);
+                }
+
+                // Fallback zum direkten Read
+                float value = _robot.Snpx.NumericRegisters.Read(address);
+                return (int?)((int)value);
+            }
+            catch
+            {
+                return (int?)null;
+            }
+        });
     }
 
     public Task<int[]?> ReadRegistersAsync(int startAddress, int count)
     {
         if (_robot == null || !IsConnected) return Task.FromResult<int[]?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            // Versuche vordefinierte Batch-Assignments zu verwenden
-            float[]? floatValues = null;
+            try
+            {
+                // Versuche vordefinierte Batch-Assignments zu verwenden
+                float[]? floatValues = null;
 
-            if (startAddress == PALETTE_RUNTIME_START && count == 16 && _paletteRuntimeBatch != null)
-            {
-                floatValues = _paletteRuntimeBatch.Read();
-            }
-            else if (startAddress == PALETTE_IDLE_START && count == 16 && _paletteIdleBatch != null)
-            {
-                floatValues = _paletteIdleBatch.Read();
-            }
-            else if (startAddress == SEQUENCE_START && count == 16 && _sequenceBatch != null)
-            {
-                floatValues = _sequenceBatch.Read();
-            }
-            else
-            {
-                // Fallback: Erstelle temporäres Batch-Assignment für andere Bereiche
-                var tempBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(startAddress, count);
-                floatValues = tempBatch.Read();
-            }
+                if (startAddress == PALETTE_RUNTIME_START && count == 16 && _paletteRuntimeBatch != null)
+                {
+                    floatValues = _paletteRuntimeBatch.Read();
+                }
+                else if (startAddress == PALETTE_IDLE_START && count == 16 && _paletteIdleBatch != null)
+                {
+                    floatValues = _paletteIdleBatch.Read();
+                }
+                else if (startAddress == SHELF_RUNTIME_START && count == SHELF_POSITION_COUNT && _shelfRuntimeBatch != null)
+                {
+                    floatValues = _shelfRuntimeBatch.Read();
+                }
+                else if (startAddress == SHELF_IDLE_START && count == SHELF_POSITION_COUNT && _shelfIdleBatch != null)
+                {
+                    floatValues = _shelfIdleBatch.Read();
+                }
+                else if (startAddress == SEQUENCE_START && count == 16 && _sequenceBatch != null)
+                {
+                    floatValues = _sequenceBatch.Read();
+                }
+                else
+                {
+                    // Fallback: Erstelle temporäres Batch-Assignment für andere Bereiche
+                    var tempBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(startAddress, count);
+                    floatValues = tempBatch.Read();
+                }
 
-            if (floatValues == null) return Task.FromResult<int[]?>(null);
+                if (floatValues == null) return (int[]?)null;
 
-            var values = new int[floatValues.Length];
-            for (int i = 0; i < floatValues.Length; i++)
-            {
-                values[i] = (int)floatValues[i];
+                var values = new int[floatValues.Length];
+                for (int i = 0; i < floatValues.Length; i++)
+                {
+                    values[i] = (int)floatValues[i];
+                }
+                return (int[]?)values;
             }
-            return Task.FromResult<int[]?>(values);
-        }
-        catch
-        {
-            return Task.FromResult<int[]?>(null);
-        }
+            catch
+            {
+                return (int[]?)null;
+            }
+        });
     }
 
     public async Task<bool> WriteRegisterAsync(int address, int value)
     {
         if (_robot == null || !IsConnected) return false;
 
-        try
+        return await _requestQueue.EnqueueAsync(async () =>
         {
-            _robot.Snpx.NumericRegisters.Write(address, (float)value);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            await _errorLog.LogAsync($"Failed to write register R[{address}]: {ex.Message}",
-                ErrorSeverity.Warning, ErrorSource.Robot);
-            return false;
-        }
+            try
+            {
+                _robot.Snpx.NumericRegisters.Write(address, (float)value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogAsync($"Failed to write register R[{address}]: {ex.Message}",
+                    ErrorSeverity.Warning, ErrorSource.Robot);
+                return false;
+            }
+        });
     }
 
     public Task<bool?> ReadDigitalInputAsync(int address)
     {
         if (_robot == null || !IsConnected) return Task.FromResult<bool?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            bool value = _robot.Snpx.SDI.Read(address);
-            return Task.FromResult<bool?>(value);
-        }
-        catch
-        {
-            return Task.FromResult<bool?>(null);
-        }
+            try
+            {
+                bool value = _robot.Snpx.SDI.Read(address);
+                return (bool?)value;
+            }
+            catch
+            {
+                return (bool?)null;
+            }
+        });
     }
 
     public Task<bool[]?> ReadDigitalInputsAsync(int startAddress, int count)
     {
         if (_robot == null || !IsConnected) return Task.FromResult<bool[]?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            var values = new bool[count];
-            for (int i = 0; i < count; i++)
+            try
             {
-                values[i] = _robot.Snpx.SDI.Read(startAddress + i);
+                // Batch-Read für bessere Performance
+                bool[] values = _robot.Snpx.SDI.Read(startAddress, (ushort)count);
+                return (bool[]?)values;
             }
-            return Task.FromResult<bool[]?>(values);
-        }
-        catch
-        {
-            return Task.FromResult<bool[]?>(null);
-        }
+            catch
+            {
+                return (bool[]?)null;
+            }
+        });
     }
 
     public Task<bool?> ReadDigitalOutputAsync(int address)
     {
         if (_robot == null || !IsConnected) return Task.FromResult<bool?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            bool value = _robot.Snpx.SDO.Read(address);
-            return Task.FromResult<bool?>(value);
-        }
-        catch
-        {
-            return Task.FromResult<bool?>(null);
-        }
+            try
+            {
+                bool value = _robot.Snpx.SDO.Read(address);
+                return (bool?)value;
+            }
+            catch
+            {
+                return (bool?)null;
+            }
+        });
     }
 
     public Task<bool[]?> ReadDigitalOutputsAsync(int startAddress, int count)
     {
         if (_robot == null || !IsConnected) return Task.FromResult<bool[]?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            var values = new bool[count];
-            for (int i = 0; i < count; i++)
+            try
             {
-                values[i] = _robot.Snpx.SDO.Read(startAddress + i);
+                // Batch-Read für bessere Performance
+                bool[] values = _robot.Snpx.SDO.Read(startAddress, (ushort)count);
+                return (bool[]?)values;
             }
-            return Task.FromResult<bool[]?>(values);
-        }
-        catch
-        {
-            return Task.FromResult<bool[]?>(null);
-        }
+            catch
+            {
+                return (bool[]?)null;
+            }
+        });
     }
 
     public async Task<bool> WriteDigitalOutputAsync(int address, bool value)
     {
         if (_robot == null || !IsConnected) return false;
 
-        try
+        return await _requestQueue.EnqueueAsync(async () =>
         {
-            _robot.Snpx.SDO.Write(address, value);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            await _errorLog.LogAsync($"Failed to write DO[{address}]: {ex.Message}",
-                ErrorSeverity.Warning, ErrorSource.Robot);
-            return false;
-        }
+            try
+            {
+                _robot.Snpx.SDO.Write(address, value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogAsync($"Failed to write DO[{address}]: {ex.Message}",
+                    ErrorSeverity.Warning, ErrorSource.Robot);
+                return false;
+            }
+        });
     }
 
     public async Task<bool> SimulateDigitalInputAsync(int address, bool value)
     {
         if (_robot == null || !IsConnected) return false;
 
-        try
+        return await _requestQueue.EnqueueAsync(async () =>
         {
-            // SDI.Write simulates an input value
-            _robot.Snpx.SDI.Write(address, value);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            await _errorLog.LogAsync($"Failed to simulate DI[{address}]: {ex.Message}",
-                ErrorSeverity.Warning, ErrorSource.Robot);
-            return false;
-        }
+            try
+            {
+                // SDI.Write simulates an input value
+                _robot.Snpx.SDI.Write(address, value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogAsync($"Failed to simulate DI[{address}]: {ex.Message}",
+                    ErrorSeverity.Warning, ErrorSource.Robot);
+                return false;
+            }
+        });
     }
 
     public async Task<bool> SimulateDigitalOutputAsync(int address, bool value)
     {
         if (_robot == null || !IsConnected) return false;
 
-        try
+        return await _requestQueue.EnqueueAsync(async () =>
         {
-            _robot.Snpx.SDO.Write(address, value);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            await _errorLog.LogAsync($"Failed to simulate DO[{address}]: {ex.Message}",
-                ErrorSeverity.Warning, ErrorSource.Robot);
-            return false;
-        }
+            try
+            {
+                _robot.Snpx.SDO.Write(address, value);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                await _errorLog.LogAsync($"Failed to simulate DO[{address}]: {ex.Message}",
+                    ErrorSeverity.Warning, ErrorSource.Robot);
+                return false;
+            }
+        });
     }
 
     public Task<Dictionary<int, bool>?> ReadDigitalInputsBatchAsync(int[] addresses)
@@ -565,31 +612,34 @@ public class RobotService : IRobotService
         if (_robot == null || !IsConnected || addresses.Length == 0)
             return Task.FromResult<Dictionary<int, bool>?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            // Bestimme den Bereich der zu lesenden Adressen
-            int minAddress = addresses.Min();
-            int maxAddress = addresses.Max();
-            ushort count = (ushort)(maxAddress - minAddress + 1);
-
-            // Lese alle Werte im Bereich mit einem Batch-Read
-            bool[] allValues = _robot.Snpx.SDI.Read(minAddress, count);
-
-            var result = new Dictionary<int, bool>();
-            foreach (var address in addresses)
+            try
             {
-                int index = address - minAddress;
-                if (index >= 0 && index < allValues.Length)
+                // Bestimme den Bereich der zu lesenden Adressen
+                int minAddress = addresses.Min();
+                int maxAddress = addresses.Max();
+                ushort count = (ushort)(maxAddress - minAddress + 1);
+
+                // Lese alle Werte im Bereich mit einem Batch-Read
+                bool[] allValues = _robot.Snpx.SDI.Read(minAddress, count);
+
+                var result = new Dictionary<int, bool>();
+                foreach (var address in addresses)
                 {
-                    result[address] = allValues[index];
+                    int index = address - minAddress;
+                    if (index >= 0 && index < allValues.Length)
+                    {
+                        result[address] = allValues[index];
+                    }
                 }
+                return (Dictionary<int, bool>?)result;
             }
-            return Task.FromResult<Dictionary<int, bool>?>(result);
-        }
-        catch
-        {
-            return Task.FromResult<Dictionary<int, bool>?>(null);
-        }
+            catch
+            {
+                return (Dictionary<int, bool>?)null;
+            }
+        });
     }
 
     public Task<Dictionary<int, bool>?> ReadDigitalOutputsBatchAsync(int[] addresses)
@@ -597,31 +647,34 @@ public class RobotService : IRobotService
         if (_robot == null || !IsConnected || addresses.Length == 0)
             return Task.FromResult<Dictionary<int, bool>?>(null);
 
-        try
+        return _requestQueue.EnqueueAsync(async () =>
         {
-            // Bestimme den Bereich der zu lesenden Adressen
-            int minAddress = addresses.Min();
-            int maxAddress = addresses.Max();
-            ushort count = (ushort)(maxAddress - minAddress + 1);
-
-            // Lese alle Werte im Bereich mit einem Batch-Read
-            bool[] allValues = _robot.Snpx.SDO.Read(minAddress, count);
-
-            var result = new Dictionary<int, bool>();
-            foreach (var address in addresses)
+            try
             {
-                int index = address - minAddress;
-                if (index >= 0 && index < allValues.Length)
+                // Bestimme den Bereich der zu lesenden Adressen
+                int minAddress = addresses.Min();
+                int maxAddress = addresses.Max();
+                ushort count = (ushort)(maxAddress - minAddress + 1);
+
+                // Lese alle Werte im Bereich mit einem Batch-Read
+                bool[] allValues = _robot.Snpx.SDO.Read(minAddress, count);
+
+                var result = new Dictionary<int, bool>();
+                foreach (var address in addresses)
                 {
-                    result[address] = allValues[index];
+                    int index = address - minAddress;
+                    if (index >= 0 && index < allValues.Length)
+                    {
+                        result[address] = allValues[index];
+                    }
                 }
+                return (Dictionary<int, bool>?)result;
             }
-            return Task.FromResult<Dictionary<int, bool>?>(result);
-        }
-        catch
-        {
-            return Task.FromResult<Dictionary<int, bool>?>(null);
-        }
+            catch
+            {
+                return (Dictionary<int, bool>?)null;
+            }
+        });
     }
 
     public async Task<bool> MoveToHomeAsync()

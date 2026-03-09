@@ -13,6 +13,11 @@
         <div class="px-6 py-4">
             <div class="flex items-center justify-between w-full">
                 <div class="flex items-center space-x-3">
+                    <button
+                        class="p-2 transition-colors"
+                        @onclick="NavigateBack">
+                        <Blazicon Svg="Lucide.ArrowLeft" class="w-5 h-5 text-gray-600" />
+                    </button>
                     <div class="p-2 bg-blue-100 rounded-lg">
                         <Blazicon Svg="Lucide.Settings" class="w-5 h-5 text-primary" />
                     </div>
@@ -418,6 +423,11 @@
     {
         actionsDropdown?.Close();
         NavigateToActionLog();
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/");
     }
 
     public void Dispose()

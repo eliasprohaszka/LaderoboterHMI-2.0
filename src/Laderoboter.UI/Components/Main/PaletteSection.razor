@@ -1,6 +1,8 @@
 @using Laderoboter.Core.Models
+@using Laderoboter.Core.Services
 @using static Laderoboter.UI.Components.Main.PaletteCard
 @using static Laderoboter.UI.Components.Main.ShelfCard
+@inject IRobotMonitor RobotMonitor
 
 <!-- PaletteSection - Toggle between Palette and Shelf view -->
 <div class="palette-section-container">
@@ -114,6 +116,11 @@
     private void SetView(ViewMode mode)
     {
         CurrentView = mode;
+
+        // Informiere den Monitor über die View-Änderung (spart Payload)
+        RobotMonitor.CurrentView = mode == ViewMode.Palette
+            ? MonitorView.Palette
+            : MonitorView.Shelf;
     }
 
     public enum ViewMode

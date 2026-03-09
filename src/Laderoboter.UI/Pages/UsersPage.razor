@@ -16,9 +16,32 @@
 }
 else
 {
-    <div class="h-full space-y-6">
-        <UserManagement />
-        <UserActionLogViewer />
+    <div class="h-full">
+        <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
+            <!-- Header -->
+            <div class="px-6 py-4">
+                <div class="flex items-center space-x-3">
+                    <button
+                        class="p-2 transition-colors"
+                        @onclick="NavigateBack">
+                        <Blazicon Svg="Lucide.ArrowLeft" class="w-5 h-5 text-gray-600" />
+                    </button>
+                    <div class="p-2 bg-blue-100 rounded-lg">
+                        <Blazicon Svg="Lucide.Users" class="w-5 h-5 text-primary" />
+                    </div>
+                    <div class="text-left">
+                        <span class="font-semibold text-lg">@T.Translate("users.title")</span>
+                        <p class="text-sm text-gray-600 mt-1">@T.Translate("users.description")</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="px-6 pb-6 flex-1 overflow-auto space-y-6">
+                <UserManagement />
+                <UserActionLogViewer />
+            </div>
+        </div>
     </div>
 }
 
@@ -31,6 +54,11 @@ else
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/settings");
     }
 
     public void Dispose()
