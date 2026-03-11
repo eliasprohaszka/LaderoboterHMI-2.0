@@ -25,6 +25,7 @@ public interface IRobotService : IDisposable
     Task<bool> ResumeProgramAsync();
     Task<bool> ResetAsync();
     Task<bool> SetSpeedOverrideAsync(int speed);
+    Task<int?> GetSpeedOverrideAsync();
 
     // Registers
     Task<int?> ReadRegisterAsync(int address);

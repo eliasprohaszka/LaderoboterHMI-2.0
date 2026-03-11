@@ -328,17 +328,41 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private void HandleSidebarClick()
+    private async Task HandleSidebarClick()
     {
         if (IsCollapsed)
         {
-            ToggleCollapse();
+            await ToggleCollapse();
         }
     }
 
-    private void ToggleCollapse()
+    private async Task ToggleCollapse()
     {
         IsCollapsed = !IsCollapsed;
+
+        // Beim Aufklappen den aktuellen Wert vom Roboter laden
+        if (!IsCollapsed && IsConnected)
+        {
+            await LoadCurrentSpeedFromRobot();
+        }
+    }
+
+    private async Task LoadCurrentSpeedFromRobot()
+    {
+        try
+        {
+            // Direkt vom Roboter lesen, nicht aus dem gecachten Status
+            var currentSpeed = await RobotService.GetSpeedOverrideAsync();
+            if (currentSpeed.HasValue && currentSpeed.Value > 0)
+            {
+                SpeedValue = currentSpeed.Value;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Speed Override] Error loading speed: {ex.Message}");
+        }
     }
 
     private async Task SetPreset(int value)
