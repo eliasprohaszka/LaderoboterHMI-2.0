@@ -40,6 +40,12 @@ public interface IRobotMonitor : IDisposable
 
     /// <summary>Stoppt das Monitoring</summary>
     void Stop();
+
+    /// <summary>
+    /// Emittiert sofort die aktuellen Snapshots für alle Paletten/Shelf.
+    /// Nützlich wenn ein neuer Subscriber sich registriert und die aktuellen Werte benötigt.
+    /// </summary>
+    void EmitCurrentSnapshots();
 }
 
 /// <summary>
@@ -204,6 +210,20 @@ public class RobotMonitor : IRobotMonitor
             _lastShelf = null;
             _lastStatus = null;
         }
+    }
+
+    public void EmitCurrentSnapshots()
+    {
+        if (!_isMonitoring || _localCache.Count == 0) return;
+
+        // Reset last snapshots to force emission even if values haven't changed
+        _lastPalette1 = null;
+        _lastPalette2 = null;
+        _lastShelf = null;
+
+        EmitPalette1Snapshot();
+        EmitPalette2Snapshot();
+        EmitShelfSnapshot();
     }
 
     private void OnRegisterChanged(object? sender, RegisterChangedEventArgs e)

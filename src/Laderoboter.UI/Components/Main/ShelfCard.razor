@@ -1,43 +1,55 @@
 @using Laderoboter.Core.Models
+@using static Laderoboter.UI.Components.Main.ShelfLoadUnloadModeOverlay
 @inject ITranslationService T
 
 <!-- ShelfCard - 7x4 Regal Layout (R1-1 bis R7-4) -->
-<div class="shelf-card glass-card h-full flex flex-col">
+<div class="shelf-card glass-card h-full flex flex-col @(loadUnloadMode != ShelfLoadUnloadMode.None ? "load-unload-active" : "")">
     <!-- CardHeader - Touch friendly -->
     <div class="shelf-header">
-        <div class="flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="shelf-indicator @(Mode == ShelfMode.Change ? "mode-change" : "mode-active")"></div>
-                <h3 class="shelf-title">Regal</h3>
-            </div>
-            <div class="flex items-center gap-3">
-                @if (Mode == ShelfMode.Change)
-                {
-                    <button class="robot-control-btn btn-icon btn-gray"
-                            @onclick="OnResetClick"
-                            title="@T.Translate("palette.resetAll")">
-                        <Blazicon Svg="Lucide.RotateCcw" class="w-5 h-5" />
+        @if (loadUnloadMode != ShelfLoadUnloadMode.None)
+        {
+            <!-- Load/Unload Mode Header Content -->
+            <ShelfLoadUnloadModeOverlay
+                Mode="@loadUnloadMode"
+                OnCancel="CancelLoadUnloadMode" />
+        }
+        else
+        {
+            <!-- Normal Header Content -->
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="shelf-indicator @(Mode == ShelfMode.Change ? "mode-change" : "mode-active")"></div>
+                    <h3 class="shelf-title">Regal</h3>
+                </div>
+                <div class="flex items-center gap-3">
+                    @if (Mode == ShelfMode.Change)
+                    {
+                        <button class="robot-control-btn btn-icon btn-gray"
+                                @onclick="OnResetClick"
+                                title="@T.Translate("palette.resetAll")">
+                            <Blazicon Svg="Lucide.RotateCcw" class="w-5 h-5" />
+                        </button>
+                    }
+                    <button class="robot-control-btn btn-icon @(Mode == ShelfMode.Change ? "btn-green" : "btn-gray")"
+                            @onclick="OnToggleModeClick"
+                            disabled="@IsInProgress"
+                            title="@ModeToggleTitle">
+                        @if (IsInProgress)
+                        {
+                            <span class="spinner w-5 h-5"></span>
+                        }
+                        else if (Mode == ShelfMode.Active)
+                        {
+                            <Blazicon Svg="Lucide.ArrowUpDown" class="w-6 h-6" />
+                        }
+                        else
+                        {
+                            <Blazicon Svg="Lucide.Check" class="w-6 h-6" />
+                        }
                     </button>
-                }
-                <button class="robot-control-btn btn-icon @(Mode == ShelfMode.Change ? "btn-green" : "btn-gray")"
-                        @onclick="OnToggleModeClick"
-                        disabled="@IsInProgress"
-                        title="@ModeToggleTitle">
-                    @if (IsInProgress)
-                    {
-                        <span class="spinner w-5 h-5"></span>
-                    }
-                    else if (Mode == ShelfMode.Active)
-                    {
-                        <Blazicon Svg="Lucide.ArrowUpDown" class="w-6 h-6" />
-                    }
-                    else
-                    {
-                        <Blazicon Svg="Lucide.Check" class="w-6 h-6" />
-                    }
-                </button>
+                </div>
             </div>
-        </div>
+        }
     </div>
 
     <!-- CardContent - Workpiece Grid -->
@@ -61,16 +73,36 @@
                     var currentCol = col;
                     var position = (currentRow - 1) * 4 + currentCol;
                     var workpiece = GetWorkpieceAtPosition(position);
+                    var isLoadUnloadStation = position == LOAD_UNLOAD_POSITION;
                     <ShelfPart
                         Row="@currentRow"
                         Column="@currentCol"
                         Workpiece="@workpiece"
+                        LoadUnloadMode="@loadUnloadMode"
+                        IsLoadUnloadStation="@isLoadUnloadStation"
                         OnWorkpieceClick="HandleWorkpieceClick" />
                 }
             }
         </div>
     </div>
 </div>
+
+<!-- Load/Unload Context Menu -->
+<ShelfLoadUnloadContextMenu
+    IsVisible="@showLoadUnloadContextMenu"
+    OnClose="CloseLoadUnloadContextMenu"
+    OnLoadSelected="OnLoadModeSelected"
+    OnUnloadSelected="OnUnloadModeSelected" />
+
+<!-- Load/Unload Instruction Dialog -->
+<ShelfLoadUnloadInstructionDialog
+    IsVisible="@showInstructionDialog"
+    IsLoadMode="@(loadUnloadMode == ShelfLoadUnloadMode.Load)"
+    TargetPositionId="@GetTargetPositionId()"
+    CurrentStep="@instructionStep"
+    OnNext="OnInstructionNext"
+    OnConfirm="OnInstructionConfirm"
+    OnCancel="OnInstructionCancel" />
 
 @code {
     [Parameter] public List<WorkpieceStatus> Workpieces { get; set; } = new();
@@ -82,6 +114,15 @@
     [Parameter] public EventCallback OnReset { get; set; }
     [Parameter] public EventCallback OnToggleMode { get; set; }
     [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
+    [Parameter] public EventCallback<(int Position, WorkpieceState NewState)> OnWorkpieceStateChange { get; set; }
+
+    // Load/Unload Mode State
+    private const int LOAD_UNLOAD_POSITION = 17; // R5-1 = Row 5, Col 1 = (5-1)*4 + 1 = 17
+    private ShelfLoadUnloadMode loadUnloadMode = ShelfLoadUnloadMode.None;
+    private bool showLoadUnloadContextMenu = false;
+    private WorkpieceStatus? selectedTargetPosition = null;
+    private bool showInstructionDialog = false;
+    private int instructionStep = 1;
 
     private string ModeToggleTitle => IsInProgress
         ? T.Translate("changeMode.inProgress", ProgressStep)
@@ -90,6 +131,14 @@
     private WorkpieceStatus? GetWorkpieceAtPosition(int position)
     {
         return Workpieces.FirstOrDefault(w => w.Position == position);
+    }
+
+    private string GetTargetPositionId()
+    {
+        if (selectedTargetPosition == null) return "";
+        int row = (selectedTargetPosition.Position - 1) / 4 + 1;
+        int col = (selectedTargetPosition.Position - 1) % 4 + 1;
+        return $"R{row}-{col}";
     }
 
     private async Task OnResetClick()
@@ -106,8 +155,98 @@
 
     private async Task HandleWorkpieceClick(WorkpieceStatus workpiece)
     {
+        // Check if this is R5-1 (load/unload station) and not in load/unload mode
+        if (workpiece.Position == LOAD_UNLOAD_POSITION && loadUnloadMode == ShelfLoadUnloadMode.None)
+        {
+            showLoadUnloadContextMenu = true;
+            return;
+        }
+
+        // In load mode: only allow clicking empty positions
+        if (loadUnloadMode == ShelfLoadUnloadMode.Load)
+        {
+            if (workpiece.State == WorkpieceState.Unused && workpiece.Position != LOAD_UNLOAD_POSITION)
+            {
+                selectedTargetPosition = workpiece;
+                instructionStep = 1;
+                showInstructionDialog = true;
+            }
+            return;
+        }
+
+        // In unload mode: only allow clicking valid positions (not empty, not processing)
+        if (loadUnloadMode == ShelfLoadUnloadMode.Unload)
+        {
+            if (workpiece.State != WorkpieceState.Unused &&
+                workpiece.State != WorkpieceState.AtRobot &&
+                workpiece.State != WorkpieceState.InMachine &&
+                workpiece.Position != LOAD_UNLOAD_POSITION)
+            {
+                selectedTargetPosition = workpiece;
+                instructionStep = 1;
+                showInstructionDialog = true;
+            }
+            return;
+        }
+
+        // Normal mode: propagate click upward (existing behavior)
         if (OnWorkpieceClick.HasDelegate)
             await OnWorkpieceClick.InvokeAsync(workpiece);
+    }
+
+    // Context Menu Handlers
+    private void CloseLoadUnloadContextMenu()
+    {
+        showLoadUnloadContextMenu = false;
+    }
+
+    private void OnLoadModeSelected()
+    {
+        showLoadUnloadContextMenu = false;
+        loadUnloadMode = ShelfLoadUnloadMode.Load;
+    }
+
+    private void OnUnloadModeSelected()
+    {
+        showLoadUnloadContextMenu = false;
+        loadUnloadMode = ShelfLoadUnloadMode.Unload;
+    }
+
+    private void CancelLoadUnloadMode()
+    {
+        loadUnloadMode = ShelfLoadUnloadMode.None;
+        selectedTargetPosition = null;
+        showInstructionDialog = false;
+        instructionStep = 1;
+    }
+
+    // Instruction Dialog Handlers
+    private void OnInstructionNext()
+    {
+        instructionStep = 2;
+    }
+
+    private async Task OnInstructionConfirm()
+    {
+        if (selectedTargetPosition != null && OnWorkpieceStateChange.HasDelegate)
+        {
+            var newState = loadUnloadMode == ShelfLoadUnloadMode.Load
+                ? WorkpieceState.Unprocessed
+                : WorkpieceState.Unused;
+
+            await OnWorkpieceStateChange.InvokeAsync((selectedTargetPosition.Position, newState));
+        }
+
+        // Reset state
+        CancelLoadUnloadMode();
+    }
+
+    private void OnInstructionCancel()
+    {
+        showInstructionDialog = false;
+        instructionStep = 1;
+        selectedTargetPosition = null;
+        // Stay in load/unload mode for another selection
     }
 
     public enum ShelfMode

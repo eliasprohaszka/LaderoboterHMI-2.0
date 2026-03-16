@@ -67,7 +67,8 @@
                     ShowProcessingIndicator="@ShelfShowProcessing"
                     OnReset="@(() => OnShelfReset.InvokeAsync())"
                     OnToggleMode="@(() => OnShelfToggleMode.InvokeAsync())"
-                    OnWorkpieceClick="OnWorkpieceClick" />
+                    OnWorkpieceClick="OnWorkpieceClick"
+                    OnWorkpieceStateChange="OnShelfWorkpieceStateChange" />
             </div>
         }
     </div>
@@ -112,6 +113,7 @@
 
     // Shared Events
     [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
+    [Parameter] public EventCallback<(int Position, WorkpieceState NewState)> OnShelfWorkpieceStateChange { get; set; }
 
     private void SetView(ViewMode mode)
     {

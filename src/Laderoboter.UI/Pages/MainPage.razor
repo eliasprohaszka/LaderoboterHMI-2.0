@@ -97,7 +97,8 @@
                         OnPalette1ToggleMode="TogglePalette1Mode"
                         OnPalette2ToggleMode="TogglePalette2Mode"
                         OnShelfToggleMode="ToggleShelfMode"
-                        OnWorkpieceClick="OnWorkpieceClick" />
+                        OnWorkpieceClick="OnWorkpieceClick"
+                        OnShelfWorkpieceStateChange="OnShelfWorkpieceStateChange" />
                 </div>
 
                 <!-- Speed Override Sidebar -->
@@ -214,8 +215,12 @@
             {
                 RobotMonitor.Start();
             }
-            // Daten kommen automatisch über RobotMonitor Subscriptions
-            // sobald der RegisterCache aktualisiert wird
+            else
+            {
+                // Monitor läuft bereits - sofort aktuelle Werte emittieren
+                // damit die neuen Subscriptions die aktuellen Daten erhalten
+                RobotMonitor.EmitCurrentSnapshots();
+            }
         }
         // Auto-connect if enabled and not already connected
         else if (autoConnect && !string.IsNullOrEmpty(ipAddress))
@@ -849,6 +854,35 @@
     {
         // Trigger re-render after status change
         StateHasChanged();
+    }
+
+    private async Task OnShelfWorkpieceStateChange((int Position, WorkpieceState NewState) change)
+    {
+        var workpiece = ShelfWorkpieces.FirstOrDefault(w => w.Position == change.Position);
+        if (workpiece == null) return;
+
+        // Calculate register address
+        // Shelf registers: R[66-93] when program running, R[166-193] when not
+        bool programRunning = RobotService.Status.IsRunning;
+        int registerAddress = programRunning
+            ? workpiece.RegisterAddress
+            : workpiece.RegisterAddress + 100;
+
+        // Write to robot register
+        var success = await RobotService.WriteRegisterAsync(registerAddress, (int)change.NewState);
+
+        if (success)
+        {
+            workpiece.State = change.NewState;
+
+            // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
+            if (!RobotService.Status.IsRunning)
+            {
+                await RobotService.WriteRegisterAsync(148, 1);
+            }
+
+            StateHasChanged();
+        }
     }
 
     public void Dispose()

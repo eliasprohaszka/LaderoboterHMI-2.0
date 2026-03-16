@@ -9,4 +9,23 @@
     font-size: 0.75rem;
     font-weight: 500;
     color: white;
+    transition: all 0.25s ease;
+}
+
+/* Load/Unload Mode States */
+.workpiece.mode-dimmed {
+    opacity: 0.25;
+    pointer-events: none;
+    filter: grayscale(60%);
+}
+
+.workpiece.mode-highlighted {
+    opacity: 1;
+    cursor: pointer;
+}
+
+.workpiece.mode-hidden {
+    opacity: 0.1;
+    pointer-events: none;
+    filter: grayscale(80%);
 }

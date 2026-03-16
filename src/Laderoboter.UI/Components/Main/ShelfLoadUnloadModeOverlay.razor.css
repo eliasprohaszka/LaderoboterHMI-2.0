@@ -1,0 +1,63 @@
+.mode-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.mode-banner.mode-load {
+    background: linear-gradient(135deg, rgba(0, 79, 124, 0.95) 0%, rgba(0, 61, 92, 0.95) 100%);
+    color: white;
+}
+
+.mode-banner.mode-unload {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.95) 0%, rgba(234, 88, 12, 0.95) 100%);
+    color: white;
+}
+
+.mode-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mode-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+    line-height: 1.2;
+}
+
+.mode-subtitle {
+    font-size: 0.8rem;
+    opacity: 0.85;
+    margin-top: 0.125rem;
+}
+
+.cancel-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 0.5rem;
+    color: white;
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.cancel-btn:active {
+    transform: scale(0.98);
+}

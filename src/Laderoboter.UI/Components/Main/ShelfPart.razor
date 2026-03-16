@@ -1,4 +1,5 @@
 @using Laderoboter.Core.Models
+@using static Laderoboter.UI.Components.Main.ShelfLoadUnloadModeOverlay
 @inject ITranslationService T
 
 @{
@@ -36,10 +37,34 @@
     var shelfId = $"R{Row}-{Column}";
 
     var currentState = Workpiece?.State ?? WorkpieceState.Unused;
+
+    // Determine mode-based CSS class for load/unload mode
+    var modeDimClass = "";
+    if (LoadUnloadMode != ShelfLoadUnloadMode.None)
+    {
+        if (IsLoadUnloadStation)
+        {
+            // R5-1 (load/unload station) is hidden during mode selection
+            modeDimClass = "mode-hidden";
+        }
+        else if (LoadUnloadMode == ShelfLoadUnloadMode.Load)
+        {
+            // In load mode: highlight empty positions, dim others
+            modeDimClass = currentState == WorkpieceState.Unused ? "mode-highlighted" : "mode-dimmed";
+        }
+        else if (LoadUnloadMode == ShelfLoadUnloadMode.Unload)
+        {
+            // In unload mode: highlight valid positions (not empty, not processing)
+            var isValid = currentState != WorkpieceState.Unused &&
+                          currentState != WorkpieceState.AtRobot &&
+                          currentState != WorkpieceState.InMachine;
+            modeDimClass = isValid ? "mode-highlighted" : "mode-dimmed";
+        }
+    }
 }
 
 <!-- ShelfPart - Identical design to WorkpiecePart -->
-<div class="workpiece @statusClass @animClass"
+<div class="workpiece @statusClass @animClass @modeDimClass"
      @onclick="OnClick">
 
     <!-- Content container with padding for touch -->
@@ -86,6 +111,8 @@
     [Parameter, EditorRequired] public int Column { get; set; }
     [Parameter] public WorkpieceStatus? Workpiece { get; set; }
     [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
+    [Parameter] public ShelfLoadUnloadMode LoadUnloadMode { get; set; } = ShelfLoadUnloadMode.None;
+    [Parameter] public bool IsLoadUnloadStation { get; set; } = false;
 
     private async Task OnClick()
     {

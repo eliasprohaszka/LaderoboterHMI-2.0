@@ -1,0 +1,51 @@
+@inject ITranslationService T
+
+@if (Mode != ShelfLoadUnloadMode.None)
+{
+    <!-- Mode Banner - Inline in Header -->
+    <div class="mode-banner @(Mode == ShelfLoadUnloadMode.Load ? "mode-load" : "mode-unload")">
+        <div class="flex items-center gap-3">
+            @if (Mode == ShelfLoadUnloadMode.Load)
+            {
+                <div class="mode-icon">
+                    <Blazicon Svg="Lucide.ArrowDownToLine" class="w-5 h-5" />
+                </div>
+                <div>
+                    <div class="mode-title">Belademodus</div>
+                    <div class="mode-subtitle">Wählen Sie eine leere Position</div>
+                </div>
+            }
+            else
+            {
+                <div class="mode-icon">
+                    <Blazicon Svg="Lucide.ArrowUpFromLine" class="w-5 h-5" />
+                </div>
+                <div>
+                    <div class="mode-title">Entlademodus</div>
+                    <div class="mode-subtitle">Wählen Sie ein Werkstück</div>
+                </div>
+            }
+        </div>
+        <button class="cancel-btn" @onclick="OnCancelClick">
+            <Blazicon Svg="Lucide.X" class="w-5 h-5" />
+            <span>Abbrechen</span>
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public ShelfLoadUnloadMode Mode { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task OnCancelClick()
+    {
+        await OnCancel.InvokeAsync();
+    }
+
+    public enum ShelfLoadUnloadMode
+    {
+        None,
+        Load,
+        Unload
+    }
+}
