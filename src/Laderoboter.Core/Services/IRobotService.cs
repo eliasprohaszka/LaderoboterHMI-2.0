@@ -72,4 +72,28 @@ public interface IRobotService : IDisposable
     /// <param name="requestRegister">Request-Register (187, 188 oder 189)</param>
     /// <returns>True wenn Handshake erfolgreich gestartet wurde</returns>
     Task<bool> StartDoorHandshakeAsync(int requestRegister);
+
+    // Robot Alarms (FANUC system alarms via FTP)
+    /// <summary>
+    /// Gets all active errors/alarms from the robot controller via FTP
+    /// </summary>
+    Task<List<RobotAlarm>> GetAlarmsAsync();
+
+    /// <summary>
+    /// Resets/clears FANUC alarms on the robot controller via Telnet.Reset
+    /// </summary>
+    Task<bool> ClearAlarmsAsync();
+
+    // Register 80 Errors (User-defined errors)
+    /// <summary>
+    /// Gets the current error code from Register 80
+    /// </summary>
+    Task<int?> GetErrorRegisterAsync();
+
+    /// <summary>
+    /// Starts the error clear handshake (R182→R82) to clear user-defined errors.
+    /// This is different from ClearAlarmsAsync which clears FANUC system alarms.
+    /// </summary>
+    /// <returns>True if handshake completed successfully</returns>
+    Task<bool> StartErrorClearHandshakeAsync();
 }

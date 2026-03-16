@@ -10,6 +10,9 @@ namespace Laderoboter.Core.Services;
 /// </summary>
 public class RobotService : IRobotService
 {
+    // UnderAutomation.Fanuc License - loaded from encrypted license.dat
+    private const string LICENSE_COMPANY = "Geibel_Hotz_GmbH_Homberg_DE";
+
     private readonly IErrorLogService _errorLog;
     private readonly IRobotRequestQueue _requestQueue;
     private FanucRobot? _robot;
@@ -56,6 +59,8 @@ public class RobotService : IRobotService
         Palette1 = new PaletteData { PaletteNumber = 1 };
         Palette2 = new PaletteData { PaletteNumber = 2 };
 
+        // Initialize license from encrypted file
+        LicenseManager.InitUnderAutomation();
         InitializePalettes();
     }
 
@@ -219,7 +224,7 @@ public class RobotService : IRobotService
 
         try
         {
-            // Use FTP GetProgramStates to get all loaded programs
+            // Use FTP GetProgramStates to get all loaded programs            
             var states = _robot.Ftp.GetProgramStates();
             return states.TaskStates
                 .Select(t => t.Name)
@@ -863,6 +868,110 @@ public class RobotService : IRobotService
                     _handshakeTimer = null;
                 }
             }
+        }
+    }
+
+    public async Task<List<RobotAlarm>> GetAlarmsAsync()
+    {
+        if (_robot == null || !IsConnected)
+            return [];
+
+        try
+        {
+            var errorList = _robot.Ftp.GetAllErrorsList();
+            var alarms = new List<RobotAlarm>();
+
+            if (errorList?.Items != null)
+            {
+                // Use FilterActiveAlarms() to get only active (non-reset) alarms
+                var activeAlarms = errorList.FilterActiveAlarms();
+
+                int id = 0;
+                foreach (var item in activeAlarms)
+                {
+                    alarms.Add(new RobotAlarm
+                    {
+                        Id = id++,
+                        ErrorCode = item.ErrorCode ?? string.Empty,
+                        Message = item.Message ?? string.Empty,
+                        RawText = item.Text,
+                        OccurredAt = item.OccurringTime,
+                        IsReset = false
+                    });
+                }
+            }
+
+            return alarms;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to get alarms: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return [];
+        }
+    }
+
+    public async Task<bool> ClearAlarmsAsync()
+    {
+        // Use the same reset mechanism as the normal RESET button
+        return await ResetAsync();
+    }
+
+    // Register 80 constants for error handling
+    private const int ERROR_REGISTER = 80;
+    private const int ERROR_CLEAR_TRIGGER = 182;  // R182: Trigger to clear error
+    private const int ERROR_CLEAR_CONFIRM = 82;   // R82: Robot confirmation
+    private const int ERROR_CLEAR_TIMEOUT_MS = 30000;  // 30 seconds timeout
+
+    public async Task<int?> GetErrorRegisterAsync()
+    {
+        return await ReadRegisterAsync(ERROR_REGISTER);
+    }
+
+    public async Task<bool> StartErrorClearHandshakeAsync()
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            // Step 1: Set R182 = 1 (trigger error clear)
+            var success = await WriteRegisterAsync(ERROR_CLEAR_TRIGGER, 1);
+            if (!success)
+            {
+                await _errorLog.LogAsync("Failed to write R182=1 for error clear handshake",
+                    ErrorSeverity.Warning, ErrorSource.Robot);
+                return false;
+            }
+
+            // Step 2: Poll R82 until it becomes 1 (robot acknowledgment)
+            var startTime = DateTime.UtcNow;
+            while ((DateTime.UtcNow - startTime).TotalMilliseconds < ERROR_CLEAR_TIMEOUT_MS)
+            {
+                await Task.Delay(200);
+
+                var r82Value = await ReadRegisterAsync(ERROR_CLEAR_CONFIRM);
+                if (r82Value == 1)
+                {
+                    // Step 3: Robot acknowledged, set R182 = 0 to complete handshake
+                    await WriteRegisterAsync(ERROR_CLEAR_TRIGGER, 0);
+                    return true;
+                }
+            }
+
+            // Timeout - reset R182 anyway and return failure
+            await WriteRegisterAsync(ERROR_CLEAR_TRIGGER, 0);
+            await _errorLog.LogAsync("Error clear handshake timed out waiting for R82=1",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // Try to reset R182 on error
+            try { await WriteRegisterAsync(ERROR_CLEAR_TRIGGER, 0); } catch { }
+
+            await _errorLog.LogAsync($"Error clear handshake failed: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
         }
     }
 

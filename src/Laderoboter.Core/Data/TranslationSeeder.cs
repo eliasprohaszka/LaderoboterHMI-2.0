@@ -92,6 +92,20 @@ public static class TranslationSeeder
         Add("header.settings", "Einstellungen", "Settings", "header");
         Add("header.maintenance", "Wartung", "Maintenance", "header");
 
+        // === Robot Alarms ===
+        Add("alarm.title", "Roboter-Alarme", "Robot Alarms", "alarm");
+        Add("alarm.noAlarms", "Keine aktiven Alarme", "No active alarms", "alarm");
+        Add("alarm.currentAlarm", "Aktueller Alarm", "Current Alarm", "alarm");
+        Add("alarm.history", "Alarm-Historie", "Alarm History", "alarm");
+        Add("alarm.acknowledge", "Gesehen", "Acknowledge", "alarm");
+        Add("alarm.acknowledged", "Gesehen", "Acknowledged", "alarm");
+        Add("alarm.resetAlarms", "Alarme zurücksetzen", "Reset Alarms", "alarm");
+        Add("alarm.resetting", "Zurücksetzen...", "Resetting...", "alarm");
+        Add("alarm.reset", "Zurückgesetzt", "Reset", "alarm");
+        Add("alarm.registerError", "Systemfehler", "System Error", "alarm");
+        Add("alarm.systemAlarm", "FANUC Alarm", "FANUC Alarm", "alarm");
+        Add("alarm.resetOnMaintenancePage", "Bitte auf Wartungsseite zurücksetzen", "Please reset on Maintenance page", "alarm");
+
         // === Connection Dialog (MainPage) ===
         Add("connection.title", "Roboterverbindung", "Robot Connection", "connection");
         Add("connection.description", "Bitte verbinden Sie sich mit dem FANUC Roboter, um fortzufahren.", "Please connect to the FANUC robot to continue.", "connection");
@@ -282,6 +296,7 @@ public static class TranslationSeeder
         Add("maintenance.ioSignals", "I/O Signale", "I/O Signals", "maintenance");
         Add("maintenance.clearError", "Fehler löschen", "Clear Error", "maintenance");
         Add("maintenance.noError", "Kein Fehler", "No Error", "maintenance");
+        Add("maintenance.clearingError", "Fehler wird gelöscht...", "Clearing error...", "maintenance");
         Add("maintenance.reset", "RESET", "RESET", "maintenance");
         Add("maintenance.programStop", "Programm STOP", "Program STOP", "maintenance");
         Add("maintenance.pcRestart", "PC Neustart", "PC Restart", "maintenance");
@@ -473,6 +488,32 @@ public static class TranslationSeeder
         Add("actionLog.allActions", "Alle Aktionen", "All Actions", "actionLog");
         Add("actionLog.systemAction", "Systemaktion", "System Action", "actionLog");
         Add("actionLog.entriesCount", "{0} Einträge", "{0} entries", "actionLog");
+
+        // === Errors ===
+        Add("errors.000", "Kein Fehler", "No Error", "errors");
+        Add("errors.001", "Werkzeugträgerzustand ungültig", "Tool carrier state invalid", "errors");
+        Add("errors.002", "Werkstücktäger an Roboter", "Workpiece carrier on robot", "errors");
+        Add("errors.003", "Mehr als ein Werkstückträger in Maschine", "More than one workpiece carrier in machine", "errors");
+        Add("errors.004", "Palette 1 nicht vorhanden / korrekt eingelegt es soll aber davon gegriffen bzw. abgelegt werden", "Palette 1 not present / correctly inserted but should be gripped or placed", "errors");
+        Add("errors.005", "Palette 2 nicht vorhanden / korrekt eingelegt es soll aber davon gegriffen bzw. abgelegt werden", "Palette 2 not present / correctly inserted but should be gripped or placed", "errors");
+        Add("errors.010", "Greifer öffnet nicht", "Gripper does not open", "errors");
+        Add("errors.011", "Greifer schließt nicht", "Gripper does not close", "errors");
+        Add("errors.012", "Werkstückträger nicht an Greifer vorhanden", "Workpiece carrier not present on gripper", "errors");
+        Add("errors.013", "Spannsystem öffnet nicht", "Clamping system does not open", "errors");
+        Add("errors.014", "Spannsystem schließt nicht", "Clamping system does not close", "errors");
+        Add("errors.015", "Werkstückträger nicht in Spannsystem vorhanden", "Workpiece carrier not present in clamping system", "errors");
+        Add("errors.016", "Schiebetür öffnet nicht", "Sliding door does not open", "errors");
+        Add("errors.017", "Schiebetür schließt nicht", "Sliding door does not close", "errors");
+        Add("errors.018", "Ablegeprogramm in Maschine angewählt aber Spannsystem belegt", "Deposit program in machine selected but clamping system occupied", "errors");
+        Add("errors.019", "Abholprogramm aus Maschine angewählt aber Spannsystem nicht belegt", "Pick-up program from machine selected but clamping system not occupied", "errors");
+        Add("errors.020", "GO TO HOME Fehler, Werkstückträgernummer ungültig", "GO TO HOME error, workpiece carrier number invalid", "errors");
+        Add("errors.021", "Ablegeprogramm angewählt aber kein Werkstückträger an Greifer", "Deposit program selected but no workpiece carrier on gripper", "errors");
+        Add("errors.022", "Abholprogramm angewählt aber Werkstückträger an Greifer", "Pick-up program selected but workpiece carrier on gripper", "errors");
+        Add("errors.023", "Autostart angewählt aber Roboter nicht in Home Position", "Autostart selected but robot not in home position", "errors");
+        Add("errors.030", "LUFTDRUCK zu niedrig (setzt sich selbstständig zurück)", "AIR PRESSURE too low (resets automatically)", "errors");
+        Add("errors.040", "Kein Signal von Schleifmaschine (setzt sich selbstständig zurück)", "No signal from grinding machine (resets automatically)", "errors");
+        Add("errors.041", "Störung Schleifmaschine (setzt sich selbstständig zurück)", "Grinding machine fault (resets automatically)", "errors");
+        Add("errors.075", "Keine Ablageplatz für LAY_DOWN_UI definiert", "No deposit location defined for LAY_DOWN_UI", "errors");
 
         return translations;
     }

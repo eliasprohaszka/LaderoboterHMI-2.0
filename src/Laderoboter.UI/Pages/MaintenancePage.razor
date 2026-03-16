@@ -2,6 +2,7 @@
 @using Laderoboter.Core.Models
 @using Laderoboter.Core.Services
 @inject IRobotService RobotService
+@inject IRegisterErrorService RegisterErrorService
 @inject ISystemService SystemService
 @inject ITranslationService T
 @inject NavigationManager Navigation
@@ -89,9 +90,11 @@
                     DisabledLeft="@(!RobotService.IsConnected)"
                     OnClickLeft="ShowIOSignals"
                     IconRight="Lucide.CircleAlert"
-                    LabelRight="@(hasActiveError ? T.Translate("maintenance.clearError") : T.Translate("maintenance.noError"))"
-                    DisabledRight="@(!RobotService.IsConnected || !hasActiveError)"
-                    OnClickRight="ClearRobotError" />
+                    LabelRight="@GetErrorButtonLabel()"
+                    SublabelRight="@GetErrorButtonSublabel()"
+                    DisabledRight="@(!RobotService.IsConnected || !CanClearError)"
+                    VariantRight="@(RegisterErrorService.HasActiveError && !RegisterErrorService.IsSelfResettingError ? "danger" : "")"
+                    OnClickRight="ClearRegisterError" />
 
                 <!-- Zeile 4: RESET + STOP -->
                 <MaintenanceSplitTile
@@ -216,17 +219,22 @@
     private System.Threading.Timer? countdownTimer;
 
     // State
-    private bool hasActiveError = false;
+    private bool _isClearingError = false;
 
     protected override void OnInitialized()
     {
         RobotService.StatusChanged += OnStatusChanged;
+        RegisterErrorService.ErrorChanged += OnRegisterErrorChanged;
         T.LanguageChanged += OnLanguageChanged;
     }
 
     private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)
     {
-        hasActiveError = !string.IsNullOrEmpty(e.Status.ErrorMessage);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRegisterErrorChanged(object? sender, RegisterErrorChangedEventArgs e)
+    {
         InvokeAsync(StateHasChanged);
     }
 
@@ -383,10 +391,45 @@
         await RobotService.StopProgramAsync();
     }
 
-    private async Task ClearRobotError()
+    private async Task ClearRegisterError()
     {
-        await RobotService.ResetAsync();
-        hasActiveError = false;
+        if (_isClearingError || !RegisterErrorService.HasActiveError)
+            return;
+
+        _isClearingError = true;
+        StateHasChanged();
+
+        try
+        {
+            await RegisterErrorService.ClearErrorAsync();
+        }
+        finally
+        {
+            _isClearingError = false;
+            StateHasChanged();
+        }
+    }
+
+    // Self-resetting errors cannot be cleared manually
+    private bool CanClearError => RegisterErrorService.HasActiveError && !RegisterErrorService.IsSelfResettingError;
+
+    private string GetErrorButtonLabel()
+    {
+        if (_isClearingError)
+            return T.Translate("maintenance.clearingError");
+
+        if (RegisterErrorService.HasActiveError)
+            return T.Translate("maintenance.clearError");
+
+        return T.Translate("maintenance.noError");
+    }
+
+    private string? GetErrorButtonSublabel()
+    {
+        if (RegisterErrorService.HasActiveError && !_isClearingError)
+            return RegisterErrorService.CurrentErrorMessage;
+
+        return null;
     }
 
     private void NavigateBack()
@@ -397,6 +440,7 @@
     public void Dispose()
     {
         RobotService.StatusChanged -= OnStatusChanged;
+        RegisterErrorService.ErrorChanged -= OnRegisterErrorChanged;
         T.LanguageChanged -= OnLanguageChanged;
         countdownTimer?.Dispose();
     }

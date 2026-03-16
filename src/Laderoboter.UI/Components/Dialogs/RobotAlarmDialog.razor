@@ -1,0 +1,163 @@
+@inject IRobotAlarmService AlarmService
+@inject IRegisterErrorService RegisterErrorService
+@inject ITranslationService T
+
+@if (IsVisible)
+{
+    <div class="alarm-overlay" @onclick="Close">
+        <div class="alarm-dialog" @onclick:stopPropagation="true">
+            <div class="alarm-header">
+                <Blazicon Svg="Lucide.TriangleAlert" class="w-6 h-6" />
+                <h3 class="alarm-title">@T.Translate("alarm.title")</h3>
+                <button class="close-button" @onclick="Close">
+                    <Blazicon Svg="Lucide.X" class="w-5 h-5" />
+                </button>
+            </div>
+
+            <div class="alarm-body">
+                @if (!HasAnyError)
+                {
+                    <div class="alarm-empty">
+                        <Blazicon Svg="Lucide.CircleCheck" class="w-12 h-12 text-green-500" />
+                        <p>@T.Translate("alarm.noAlarms")</p>
+                    </div>
+                }
+                else
+                {
+                    @* Register 80 Error (User-defined) *@
+                    @if (RegisterErrorService.HasActiveError)
+                    {
+                        <div class="alarm-section">
+                            <h4 class="section-title">@T.Translate("alarm.registerError")</h4>
+                            <div class="alarm-card @(RegisterErrorService.IsAcknowledged ? "alarm-card-acknowledged" : "alarm-card-register")">
+                                <div class="alarm-card-header">
+                                    <span class="alarm-code">@($"R80-{RegisterErrorService.CurrentErrorCode:D3}")</span>
+                                    @if (RegisterErrorService.ErrorOccurredAt.HasValue)
+                                    {
+                                        <span class="alarm-time">@RegisterErrorService.ErrorOccurredAt.Value.ToLocalTime().ToString("HH:mm:ss")</span>
+                                    }
+                                </div>
+                                <p class="alarm-message">@RegisterErrorService.CurrentErrorMessage</p>
+                                @if (!RegisterErrorService.IsSelfResettingError)
+                                {
+                                    <div class="alarm-hint">
+                                        <Blazicon Svg="Lucide.Info" class="w-4 h-4" />
+                                        <span>@T.Translate("alarm.resetOnMaintenancePage")</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+
+                    @* FANUC System Alarm *@
+                    @if (AlarmService.ActiveAlarm != null)
+                    {
+                        <div class="alarm-section">
+                            <h4 class="section-title">@T.Translate("alarm.systemAlarm")</h4>
+                            <div class="alarm-card alarm-card-active">
+                                <div class="alarm-card-header">
+                                    <span class="alarm-code">@GetAlarmCode(AlarmService.ActiveAlarm)</span>
+                                    <span class="alarm-time">@AlarmService.ActiveAlarm.OccurredAt.ToString("HH:mm:ss")</span>
+                                </div>
+                                <p class="alarm-message">@GetAlarmMessage(AlarmService.ActiveAlarm)</p>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+
+            <div class="alarm-footer">
+                @if (AlarmService.HasActiveAlarm && AlarmService.CurrentState == RobotAlarmState.Active)
+                {
+                    <button class="btn btn-secondary" @onclick="AcknowledgeAlarms">
+                        <Blazicon Svg="Lucide.Eye" class="w-4 h-4" />
+                        <span>@T.Translate("alarm.acknowledge")</span>
+                    </button>
+                }
+                @if (AlarmService.HasActiveAlarm)
+                {
+                    <button class="btn btn-danger" @onclick="ResetAlarms" disabled="@_isResetting">
+                        <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4" />
+                        <span>@(_isResetting ? T.Translate("alarm.resetting") : T.Translate("alarm.resetAlarms"))</span>
+                    </button>
+                }
+                <button class="btn btn-primary" @onclick="Close">
+                    @T.Translate("common.close")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnClosed { get; set; }
+
+    private bool _isResetting;
+
+    private bool HasAnyError => AlarmService.HasActiveAlarm || RegisterErrorService.HasActiveError;
+
+    protected override void OnParametersSet()
+    {
+        // When dialog opens, acknowledge that user has seen the alarms
+        if (IsVisible)
+        {
+            if (AlarmService.CurrentState == RobotAlarmState.Active)
+            {
+                AlarmService.AcknowledgeAlarms();
+            }
+
+            // Also acknowledge R80 register errors when dialog is viewed
+            if (RegisterErrorService.HasActiveError && !RegisterErrorService.IsAcknowledged)
+            {
+                RegisterErrorService.AcknowledgeError();
+            }
+        }
+    }
+
+    private async Task Close()
+    {
+        await OnClosed.InvokeAsync();
+    }
+
+    private void AcknowledgeAlarms()
+    {
+        AlarmService.AcknowledgeAlarms();
+    }
+
+    private async Task ResetAlarms()
+    {
+        _isResetting = true;
+        StateHasChanged();
+
+        await AlarmService.ResetAlarmsAsync();
+
+        _isResetting = false;
+        StateHasChanged();
+    }
+
+    private string GetAlarmCode(RobotAlarm alarm)
+    {
+        if (!string.IsNullOrWhiteSpace(alarm.ErrorCode))
+            return alarm.ErrorCode;
+
+        // Fallback: Try to extract code from RawText
+        if (!string.IsNullOrWhiteSpace(alarm.RawText))
+        {
+            var parts = alarm.RawText.Split(' ', 2);
+            if (parts.Length > 0)
+                return parts[0];
+        }
+
+        return "ALARM";
+    }
+
+    private string GetAlarmMessage(RobotAlarm alarm)
+    {
+        if (!string.IsNullOrWhiteSpace(alarm.Message))
+            return alarm.Message;
+
+        // Fallback: Use RawText
+        return alarm.RawText ?? "";
+    }
+}

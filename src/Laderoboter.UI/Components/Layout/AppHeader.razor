@@ -1,4 +1,6 @@
 @inject IRobotService RobotService
+@inject IRobotAlarmService AlarmService
+@inject IRegisterErrorService RegisterErrorService
 @inject NavigationManager Navigation
 @inject ITranslationService T
 @inject IAuthStateService AuthState
@@ -20,13 +22,13 @@
 
         <!-- Status und Zeit (Rechts) -->
         <div class="header-actions">
-            <!-- Error Warning Icon - Touch friendly -->
-            @if (hasActiveError)
+            <!-- Robot Alarm Icon - Touch friendly (shows for both FANUC alarms and R80 errors) -->
+            @if (HasAnyError)
             {
-                <button @onclick="ShowCurrentError"
-                        class="header-error-btn"
+                <button @onclick="ShowAlarmDialog"
+                        class="header-error-btn @GetAlarmButtonClass()"
                         title="@T.Translate("header.showRobotError")">
-                    <Blazicon Svg="Lucide.CircleAlert" class="w-5 h-5" />
+                    <Blazicon Svg="Lucide.TriangleAlert" class="w-5 h-5" />
                 </button>
             }
 
@@ -115,25 +117,37 @@
     </div>
 </header>
 
+<!-- Robot Alarm Dialog -->
+<RobotAlarmDialog IsVisible="_showAlarmDialog"
+                  OnClosed="CloseAlarmDialog" />
+
 @code {
     private string currentTime = "";
     private string currentDate = "";
     private bool showNavigationMenu = false;
-    private bool hasActiveError = false;
     private bool _showUserMenu = false;
     private bool _isUserMenuClosing = false;
-    private System.Threading.Timer? timer;
+    private bool _showAlarmDialog = false;
+    private System.Threading.Timer? _clockTimer;
+
+    // Combined error state: FANUC alarms OR R80 register errors
+    private bool HasAnyError => AlarmService.HasActiveAlarm || RegisterErrorService.HasActiveError;
 
     protected override void OnInitialized()
     {
         UpdateDateTime();
-        timer = new System.Threading.Timer(_ =>
+
+        // Clock timer - updates every second
+        _clockTimer = new System.Threading.Timer(_ =>
         {
             UpdateDateTime();
             InvokeAsync(StateHasChanged);
         }, null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
 
+        // Subscribe to events - no polling needed anymore
         RobotService.StatusChanged += OnStatusChanged;
+        AlarmService.AlarmStateChanged += OnAlarmStateChanged;
+        RegisterErrorService.ErrorChanged += OnRegisterErrorChanged;
         T.LanguageChanged += OnLanguageChanged;
         AuthState.AuthStateChanged += OnAuthStateChanged;
     }
@@ -146,6 +160,16 @@
     }
 
     private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnAlarmStateChanged(object? sender, RobotAlarmStateChangedEventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnRegisterErrorChanged(object? sender, RegisterErrorChangedEventArgs e)
     {
         InvokeAsync(StateHasChanged);
     }
@@ -224,15 +248,38 @@
         _ => ""
     };
 
-    private void ShowCurrentError()
+    private void ShowAlarmDialog()
     {
-        // TODO: Show error dialog
+        _showAlarmDialog = true;
+    }
+
+    private void CloseAlarmDialog()
+    {
+        _showAlarmDialog = false;
+    }
+
+    private string GetAlarmButtonClass()
+    {
+        // Check R80 errors first
+        if (RegisterErrorService.HasActiveError)
+        {
+            return RegisterErrorService.IsAcknowledged ? "alarm-acknowledged" : "alarm-active";
+        }
+
+        return AlarmService.CurrentState switch
+        {
+            RobotAlarmState.Active => "alarm-active",
+            RobotAlarmState.Acknowledged => "alarm-acknowledged",
+            _ => ""
+        };
     }
 
     public void Dispose()
     {
-        timer?.Dispose();
+        _clockTimer?.Dispose();
         RobotService.StatusChanged -= OnStatusChanged;
+        AlarmService.AlarmStateChanged -= OnAlarmStateChanged;
+        RegisterErrorService.ErrorChanged -= OnRegisterErrorChanged;
         T.LanguageChanged -= OnLanguageChanged;
         AuthState.AuthStateChanged -= OnAuthStateChanged;
     }

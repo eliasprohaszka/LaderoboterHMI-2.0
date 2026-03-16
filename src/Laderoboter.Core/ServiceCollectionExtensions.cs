@@ -22,7 +22,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IErrorLogService, ErrorLogService>();
         services.AddSingleton<IRobotRequestQueue, RobotRequestQueue>();
         services.AddSingleton<IRobotService, RobotService>();
+        services.AddSingleton<IRegisterCacheService, RegisterCacheService>();
         services.AddSingleton<IRobotMonitor, RobotMonitor>();
+        services.AddSingleton<IRobotAlarmService, RobotAlarmService>();
+        services.AddSingleton<IRegisterErrorService, RegisterErrorService>();
         services.AddSingleton<ISystemService, SystemService>();
         services.AddSingleton<ITranslationService, TranslationService>();
 

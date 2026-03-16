@@ -56,7 +56,7 @@
     gap: 1rem;
 }
 
-/* Error button - touch friendly */
+/* Error/Alarm button - touch friendly */
 .header-error-btn {
     width: 48px;
     height: 48px;
@@ -73,6 +73,31 @@
 
 .header-error-btn:active {
     transform: scale(0.95);
+}
+
+/* Active alarm - not yet viewed (bright red with pulse animation) */
+.header-error-btn.alarm-active {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    border-color: #991b1b;
+    color: white;
+    animation: alarm-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes alarm-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+    }
+}
+
+/* Acknowledged alarm - viewed but not reset (lighter red) */
+.header-error-btn.alarm-acknowledged {
+    background: linear-gradient(135deg, #fca5a5 0%, #f87171 100%);
+    border-color: #ef4444;
+    color: #7f1d1d;
+    animation: none;
 }
 
 /* Status indicator */

@@ -7,6 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="license.dat" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.*">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -14,7 +18,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.*" />
     <PackageReference Include="System.Reactive" Version="6.0.1" />
     <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.3" />
-    <PackageReference Include="UnderAutomation.Fanuc" Version="4.4.0" />
+    <PackageReference Include="UnderAutomation.Fanuc" Version="4.7.0" />
   </ItemGroup>
 
 </Project>

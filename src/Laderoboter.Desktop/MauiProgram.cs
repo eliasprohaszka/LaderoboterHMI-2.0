@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.LifecycleEvents;
 using Laderoboter.Core;
 using Laderoboter.Core.Interfaces;
+using Laderoboter.Core.Services;
 using Laderoboter.Desktop.Services;
 using Laderoboter.UI;
 
@@ -11,6 +12,9 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        // Initialize license early
+        LicenseManager.InitUnderAutomation();
+
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
