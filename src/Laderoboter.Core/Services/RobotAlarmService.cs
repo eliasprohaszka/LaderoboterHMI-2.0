@@ -9,23 +9,22 @@ public class RobotAlarmService : IRobotAlarmService, IDisposable
 {
     private readonly IRobotService _robotService;
     private readonly List<RobotAlarm> _currentAlarms = [];
-    private readonly System.Threading.Timer _refreshTimer;
+    private System.Threading.Timer? _refreshTimer;
     private readonly object _refreshLock = new();
     private RobotAlarmState _currentState = RobotAlarmState.None;
     private HashSet<string> _knownAlarmKeys = [];
     private bool _disposed;
+    private bool _timerStarted;
+
+    // FTP-Abfragen starten nach SNPX um Überlastung zu vermeiden
+    private const int INITIAL_DELAY_AFTER_CONNECT_MS = 2500; // Nach RegisterCacheService (1500ms)
+    private const int REFRESH_INTERVAL_MS = 2000;
 
     public RobotAlarmService(IRobotService robotService)
     {
         _robotService = robotService;
         _robotService.StatusChanged += OnRobotStatusChanged;
-
-        // Timer to refresh alarms every 2 seconds
-        _refreshTimer = new System.Threading.Timer(
-            RefreshTimerCallback,
-            null,
-            TimeSpan.FromSeconds(1),
-            TimeSpan.FromSeconds(2));
+        // Timer startet erst bei Connect
     }
 
     private void RefreshTimerCallback(object? state)
@@ -163,8 +162,43 @@ public class RobotAlarmService : IRobotAlarmService, IDisposable
 
     private void OnRobotStatusChanged(object? sender, Events.RobotStatusChangedEventArgs e)
     {
-        // Could trigger alarm refresh on status changes if needed
-        // For now, we rely on explicit RefreshAlarmsAsync calls
+        Console.WriteLine($"[RobotAlarmService] StatusChanged: IsConnected={e.Status.IsConnected}, _timerStarted={_timerStarted}");
+
+        if (e.Status.IsConnected)
+        {
+            if (!_timerStarted)
+            {
+                // Verbindung hergestellt - Timer mit Verzögerung starten
+                // Startet NACH RegisterCacheService um FTP/SNPX nicht gleichzeitig zu belasten
+                _timerStarted = true;
+                _refreshTimer = new System.Threading.Timer(
+                    RefreshTimerCallback,
+                    null,
+                    TimeSpan.FromMilliseconds(INITIAL_DELAY_AFTER_CONNECT_MS),
+                    TimeSpan.FromMilliseconds(REFRESH_INTERVAL_MS));
+
+                Console.WriteLine($"[RobotAlarmService] Timer gestartet mit {INITIAL_DELAY_AFTER_CONNECT_MS}ms Initial-Delay");
+            }
+        }
+        else
+        {
+            // Verbindung getrennt - Timer stoppen und Alarms leeren
+            if (_refreshTimer != null)
+            {
+                _refreshTimer.Dispose();
+                _refreshTimer = null;
+            }
+            _timerStarted = false;
+
+            if (_currentAlarms.Count > 0)
+            {
+                _currentAlarms.Clear();
+                _knownAlarmKeys.Clear();
+                UpdateState(RobotAlarmState.None);
+            }
+
+            Console.WriteLine("[RobotAlarmService] Timer gestoppt, Alarms geleert");
+        }
     }
 
     private void UpdateState(RobotAlarmState newState)
@@ -190,7 +224,7 @@ public class RobotAlarmService : IRobotAlarmService, IDisposable
         if (_disposed) return;
         _disposed = true;
 
-        _refreshTimer.Dispose();
+        _refreshTimer?.Dispose();
         _robotService.StatusChanged -= OnRobotStatusChanged;
         GC.SuppressFinalize(this);
     }

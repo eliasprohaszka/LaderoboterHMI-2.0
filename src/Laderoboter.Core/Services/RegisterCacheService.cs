@@ -10,7 +10,7 @@ namespace Laderoboter.Core.Services;
 public class RegisterCacheService : IRegisterCacheService
 {
     private readonly IRobotService _robotService;
-    private readonly System.Threading.Timer _refreshTimer;
+    private System.Threading.Timer? _refreshTimer;
     private readonly object _cacheLock = new();
     private readonly object _refreshLock = new();
 
@@ -18,11 +18,13 @@ public class RegisterCacheService : IRegisterCacheService
     private const int REGISTER_START = 1;
     private const int REGISTER_COUNT = 200;
     private const int REFRESH_INTERVAL_MS = 1000; // 1 second
+    private const int INITIAL_DELAY_AFTER_CONNECT_MS = 1500; // Warte nach Connect bevor erster Read
 
     private int[]? _cachedValues;
     private int[]? _previousValues; // For change detection
     private DateTime _lastUpdateTime;
     private bool _disposed;
+    private bool _timerStarted;
 
     // Direct SDK access
     private dynamic? _registerBatch;
@@ -31,15 +33,8 @@ public class RegisterCacheService : IRegisterCacheService
     {
         _robotService = robotService;
 
-        // Subscribe to connection changes
+        // Subscribe to connection changes - Timer startet erst bei Connect
         _robotService.StatusChanged += OnRobotStatusChanged;
-
-        // Start the refresh timer
-        _refreshTimer = new System.Threading.Timer(
-            RefreshTimerCallback,
-            null,
-            TimeSpan.FromMilliseconds(500), // Initial delay
-            TimeSpan.FromMilliseconds(REFRESH_INTERVAL_MS));
     }
 
     public bool HasValidData
@@ -107,15 +102,42 @@ public class RegisterCacheService : IRegisterCacheService
 
     private void OnRobotStatusChanged(object? sender, Events.RobotStatusChangedEventArgs e)
     {
-        if (!e.Status.IsConnected)
+        Console.WriteLine($"[RegisterCacheService] StatusChanged: IsConnected={e.Status.IsConnected}, _timerStarted={_timerStarted}");
+
+        if (e.Status.IsConnected)
         {
-            // Clear cache when disconnected
+            if (!_timerStarted)
+            {
+                // Verbindung hergestellt - Timer mit Verzögerung starten
+                // Gibt dem Roboter Zeit sich zu stabilisieren bevor wir SNPX-Reads machen
+                _timerStarted = true;
+                _refreshTimer = new System.Threading.Timer(
+                    RefreshTimerCallback,
+                    null,
+                    TimeSpan.FromMilliseconds(INITIAL_DELAY_AFTER_CONNECT_MS),
+                    TimeSpan.FromMilliseconds(REFRESH_INTERVAL_MS));
+
+                Console.WriteLine($"[RegisterCacheService] Timer gestartet mit {INITIAL_DELAY_AFTER_CONNECT_MS}ms Initial-Delay");
+            }
+        }
+        else
+        {
+            // Verbindung getrennt - Timer stoppen und Cache leeren
+            if (_refreshTimer != null)
+            {
+                _refreshTimer.Dispose();
+                _refreshTimer = null;
+            }
+            _timerStarted = false;
+
             lock (_cacheLock)
             {
                 _cachedValues = null;
                 _previousValues = null;
                 _registerBatch = null;
             }
+
+            Console.WriteLine("[RegisterCacheService] Timer gestoppt, Cache geleert");
         }
     }
 
@@ -170,9 +192,11 @@ public class RegisterCacheService : IRegisterCacheService
                 return;
             }
 
-            // Create batch assignment if needed
+            // Create batch assignment if needed (immer neu erstellen bei Reconnect)
+            // Das Batch muss zum aktuellen Robot-Objekt gehören
             if (_registerBatch == null)
             {
+                Console.WriteLine("[RegisterCacheService] Erstelle neues BatchAssignment");
                 _registerBatch = robot.Snpx.NumericRegisters.CreateBatchAssignment(REGISTER_START, REGISTER_COUNT);
             }
 
@@ -245,7 +269,7 @@ public class RegisterCacheService : IRegisterCacheService
         if (_disposed) return;
         _disposed = true;
 
-        _refreshTimer.Dispose();
+        _refreshTimer?.Dispose();
         _robotService.StatusChanged -= OnRobotStatusChanged;
 
         lock (_cacheLock)

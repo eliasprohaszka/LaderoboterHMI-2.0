@@ -307,10 +307,11 @@
         RobotService.StatusChanged += OnStatusChanged;
         T.LanguageChanged += OnLanguageChanged;
 
-        if (IsConnected)
+        // Nur initialen Wert aus Status lesen (kein SNPX-Aufruf)
+        // AutoRefresh wird erst beim Aufklappen gestartet
+        if (IsConnected && RobotService.Status.SpeedOverride > 0)
         {
-            SpeedValue = RobotService.Status.SpeedOverride > 0 ? RobotService.Status.SpeedOverride : 50;
-            StartAutoRefresh();
+            SpeedValue = RobotService.Status.SpeedOverride;
         }
     }
 
@@ -340,10 +341,17 @@
     {
         IsCollapsed = !IsCollapsed;
 
-        // Beim Aufklappen den aktuellen Wert vom Roboter laden
         if (!IsCollapsed && IsConnected)
         {
+            // Beim Aufklappen den aktuellen Wert vom Roboter laden
             await LoadCurrentSpeedFromRobot();
+            // AutoRefresh nur starten wenn aufgeklappt
+            StartAutoRefresh();
+        }
+        else if (IsCollapsed)
+        {
+            // Beim Zuklappen AutoRefresh stoppen
+            StopAutoRefresh();
         }
     }
 
@@ -411,7 +419,8 @@
         _refreshTimer?.Dispose();
         _refreshTimer = new System.Threading.Timer(async _ =>
         {
-            if (!IsUpdating && IsConnected)
+            // Nur aktualisieren wenn aufgeklappt und nicht gerade am Updaten
+            if (!IsCollapsed && !IsUpdating && IsConnected)
             {
                 var currentSpeed = RobotService.Status.SpeedOverride;
                 if (currentSpeed > 0 && currentSpeed != SpeedValue)
@@ -421,6 +430,12 @@
                 }
             }
         }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private void StopAutoRefresh()
+    {
+        _refreshTimer?.Dispose();
+        _refreshTimer = null;
     }
 
     public void Dispose()

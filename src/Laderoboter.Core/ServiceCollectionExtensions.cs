@@ -56,4 +56,16 @@ public static class ServiceCollectionExtensions
         var translationService = serviceProvider.GetRequiredService<ITranslationService>();
         await translationService.InitializeAsync();
     }
+
+    /// <summary>
+    /// Initialisiert die Service-Verbindungen nach DI-Container-Erstellung.
+    /// Löst zirkuläre Abhängigkeiten zwischen RobotService und RegisterCacheService.
+    /// </summary>
+    public static void InitializeServiceConnections(this IServiceProvider serviceProvider)
+    {
+        var robotService = serviceProvider.GetRequiredService<IRobotService>() as RobotService;
+        var registerCache = serviceProvider.GetRequiredService<IRegisterCacheService>();
+
+        robotService?.SetRegisterCache(registerCache);
+    }
 }

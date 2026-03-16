@@ -19,6 +19,9 @@ public class RobotService : IRobotService
     private bool _disposed;
     private bool _isConnected;
 
+    // RegisterCache für Read-Operationen (wird nach Konstruktion gesetzt um zirkuläre Abhängigkeit zu vermeiden)
+    private IRegisterCacheService? _registerCache;
+
     // Door Handshake Monitor
     private System.Threading.Timer? _handshakeTimer;
     private readonly object _handshakeLock = new();
@@ -26,12 +29,7 @@ public class RobotService : IRobotService
     private readonly Dictionary<int, (int requestRegister, int expectedValue)> _activeHandshakes = new();
     private const int HANDSHAKE_POLL_INTERVAL_MS = 200;
 
-    // Batch Assignments für schnelles Lesen (dynamic type um API-Kompatibilität zu gewährleisten)
-    private dynamic? _paletteRuntimeBatch;  // R[50-65]: Runtime palette values
-    private dynamic? _paletteIdleBatch;     // R[150-165]: Idle palette values
-    private dynamic? _shelfRuntimeBatch;    // R[66-93]: Runtime shelf values (28 positions)
-    private dynamic? _shelfIdleBatch;       // R[166-193]: Idle shelf values (28 positions)
-    private dynamic? _sequenceBatch;        // R[101-116]: Sequence numbers
+    // ENTFERNT: Batch Assignments - alle Register werden jetzt über RegisterCacheService gelesen
 
     // Register addresses (from old app)
     private const int PALETTE_RUNTIME_START = 50;   // 50-65: Palette 1 & 2 wenn Programm läuft
@@ -86,45 +84,30 @@ public class RobotService : IRobotService
 
     private void InitializeBatchAssignments()
     {
-        if (_robot?.Snpx == null) return;
-
-        try
-        {
-            // Batch für Runtime Palette Werte: R[50-65] (16 Register)
-            _paletteRuntimeBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(PALETTE_RUNTIME_START, 16);
-
-            // Batch für Idle Palette Werte: R[150-165] (16 Register)
-            _paletteIdleBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(PALETTE_IDLE_START, 16);
-
-            // Batch für Runtime Shelf Werte: R[66-93] (28 Register)
-            _shelfRuntimeBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(SHELF_RUNTIME_START, SHELF_POSITION_COUNT);
-
-            // Batch für Idle Shelf Werte: R[166-193] (28 Register)
-            _shelfIdleBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(SHELF_IDLE_START, SHELF_POSITION_COUNT);
-
-            // Batch für Sequence: R[101-116] (16 Register)
-            _sequenceBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(SEQUENCE_START, 16);
-        }
-        catch (Exception ex)
-        {
-            _errorLog.LogAsync($"Failed to initialize batch assignments: {ex.Message}",
-                ErrorSeverity.Warning, ErrorSource.Robot);
-        }
+        // DEAKTIVIERT: Batch-Assignments wurden entfernt.
+        // Alle Register werden jetzt zentral über den RegisterCacheService gelesen,
+        // um SNPX-Kommunikationsfehler durch parallele Anfragen zu vermeiden.
+        // Der RegisterCacheService liest alle 200 Register in einem einzigen Batch.
     }
 
     private void DisposeBatchAssignments()
     {
-        _paletteRuntimeBatch = null;
-        _paletteIdleBatch = null;
-        _shelfRuntimeBatch = null;
-        _shelfIdleBatch = null;
-        _sequenceBatch = null;
+        // ENTFERNT: Batch-Assignments werden nicht mehr verwendet
     }
 
     public bool IsConnected => _isConnected && _robot != null;
     public RobotStatus Status { get; private set; }
     public PaletteData Palette1 { get; private set; }
     public PaletteData Palette2 { get; private set; }
+
+    /// <summary>
+    /// Setzt den RegisterCacheService für Read-Operationen.
+    /// Wird nach Konstruktion aufgerufen um zirkuläre Abhängigkeit zu vermeiden.
+    /// </summary>
+    public void SetRegisterCache(IRegisterCacheService registerCache)
+    {
+        _registerCache = registerCache;
+    }
 
     public event EventHandler<RobotStatusChangedEventArgs>? StatusChanged;
     public event EventHandler<RegisterChangedEventArgs>? RegisterChanged;
@@ -376,85 +359,26 @@ public class RobotService : IRobotService
 
     public Task<int?> ReadRegisterAsync(int address)
     {
-        if (_robot == null || !IsConnected) return Task.FromResult<int?>(null);
-
-        return _requestQueue.EnqueueAsync(async () =>
+        // Lese aus dem RegisterCache statt direkt über SNPX
+        if (_registerCache != null && _registerCache.HasValidData)
         {
-            try
-            {
-                // Erstelle einen neuen BatchAssignment für einen einzelnen Read
-                // Dies umgeht mögliches Caching im SDK
-                var batch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(address, 1);
-                float[] values = batch.Read();
+            return Task.FromResult(_registerCache.GetRegister(address));
+        }
 
-                if (values != null && values.Length > 0)
-                {
-                    return (int?)((int)values[0]);
-                }
-
-                // Fallback zum direkten Read
-                float value = _robot.Snpx.NumericRegisters.Read(address);
-                return (int?)((int)value);
-            }
-            catch
-            {
-                return (int?)null;
-            }
-        });
+        // Fallback wenn Cache nicht verfügbar
+        return Task.FromResult<int?>(null);
     }
 
     public Task<int[]?> ReadRegistersAsync(int startAddress, int count)
     {
-        if (_robot == null || !IsConnected) return Task.FromResult<int[]?>(null);
-
-        return _requestQueue.EnqueueAsync(async () =>
+        // Lese aus dem RegisterCache statt direkt über SNPX
+        if (_registerCache != null && _registerCache.HasValidData)
         {
-            try
-            {
-                // Versuche vordefinierte Batch-Assignments zu verwenden
-                float[]? floatValues = null;
+            return Task.FromResult(_registerCache.GetRegisters(startAddress, count));
+        }
 
-                if (startAddress == PALETTE_RUNTIME_START && count == 16 && _paletteRuntimeBatch != null)
-                {
-                    floatValues = _paletteRuntimeBatch.Read();
-                }
-                else if (startAddress == PALETTE_IDLE_START && count == 16 && _paletteIdleBatch != null)
-                {
-                    floatValues = _paletteIdleBatch.Read();
-                }
-                else if (startAddress == SHELF_RUNTIME_START && count == SHELF_POSITION_COUNT && _shelfRuntimeBatch != null)
-                {
-                    floatValues = _shelfRuntimeBatch.Read();
-                }
-                else if (startAddress == SHELF_IDLE_START && count == SHELF_POSITION_COUNT && _shelfIdleBatch != null)
-                {
-                    floatValues = _shelfIdleBatch.Read();
-                }
-                else if (startAddress == SEQUENCE_START && count == 16 && _sequenceBatch != null)
-                {
-                    floatValues = _sequenceBatch.Read();
-                }
-                else
-                {
-                    // Fallback: Erstelle temporäres Batch-Assignment für andere Bereiche
-                    var tempBatch = _robot.Snpx.NumericRegisters.CreateBatchAssignment(startAddress, count);
-                    floatValues = tempBatch.Read();
-                }
-
-                if (floatValues == null) return (int[]?)null;
-
-                var values = new int[floatValues.Length];
-                for (int i = 0; i < floatValues.Length; i++)
-                {
-                    values[i] = (int)floatValues[i];
-                }
-                return (int[]?)values;
-            }
-            catch
-            {
-                return (int[]?)null;
-            }
-        });
+        // Fallback wenn Cache nicht verfügbar
+        return Task.FromResult<int[]?>(null);
     }
 
     public async Task<bool> WriteRegisterAsync(int address, int value)

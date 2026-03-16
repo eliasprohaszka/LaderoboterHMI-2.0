@@ -57,7 +57,7 @@ public static class MauiProgram
 
         var app = builder.Build();
 
-        // Initialize database and translations
+        // Initialize database, translations, and service connections
         try
         {
             Task.Run(async () =>
@@ -65,6 +65,9 @@ public static class MauiProgram
                 await app.Services.InitializeDatabaseAsync();
                 await app.Services.InitializeTranslationsAsync();
             }).GetAwaiter().GetResult();
+
+            // Initialisiere Service-Verbindungen (löst zirkuläre Abhängigkeiten)
+            app.Services.InitializeServiceConnections();
         }
         catch (Exception ex)
         {

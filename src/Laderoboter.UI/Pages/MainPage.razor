@@ -214,8 +214,8 @@
             {
                 RobotMonitor.Start();
             }
-            // Always load current data when returning to this page
-            await LoadPaletteDataFromRegisters();
+            // Daten kommen automatisch über RobotMonitor Subscriptions
+            // sobald der RegisterCache aktualisiert wird
         }
         // Auto-connect if enabled and not already connected
         else if (autoConnect && !string.IsNullOrEmpty(ipAddress))
@@ -339,11 +339,12 @@
             }
             await Settings.SetAsync("robot.connection.autoConnect", autoConnect);
 
-            // Start monitoring - dies wird die Palette-Daten aus den Registern laden
+            // Start monitoring - der RobotMonitor reagiert auf RegisterCache Events
+            // und wird die Palette-Daten automatisch laden sobald der Cache gefüllt ist
             RobotMonitor.Start();
 
-            // Initial load: Read registers directly once
-            await LoadPaletteDataFromRegisters();
+            // Kein direkter Read mehr - die Daten kommen über die RobotMonitor Subscriptions
+            // (Palette1Changes, Palette2Changes, ShelfChanges) sobald der RegisterCache aktualisiert wird
         }
         else
         {
@@ -353,74 +354,9 @@
         isConnecting = false;
     }
 
-    private async Task LoadPaletteDataFromRegisters()
-    {
-        if (!RobotService.IsConnected) return;
-
-        // Register-Layout:
-        // - R[50-57]:   Palette 1 (Position 1-8) wenn Programm läuft
-        // - R[58-65]:   Palette 2 (Position 1-8) wenn Programm läuft
-        // - R[66-93]:   Regal (Position 1-28, Regal_1_1 bis Regal_7_4) wenn Programm läuft
-        // - R[150-157]: Palette 1 (Position 1-8) wenn Programm NICHT läuft
-        // - R[158-165]: Palette 2 (Position 1-8) wenn Programm NICHT läuft
-        // - R[166-193]: Regal (Position 1-28) wenn Programm NICHT läuft
-
-        bool programRunning = RobotService.Status.IsRunning;
-
-        // Wähle den richtigen Register-Bereich basierend auf Programm-Status
-        int paletteBaseAddress = programRunning ? 50 : 150;
-        int shelfBaseAddress = programRunning ? 66 : 166;
-
-        // Lese alle 16 Palette-Werte in einem Batch (Palette 1 + Palette 2)
-        var paletteValues = await RobotService.ReadRegistersAsync(paletteBaseAddress, 16);
-        if (paletteValues != null)
-        {
-            // Erste 8 Werte: Palette 1
-            for (int i = 0; i < 8 && i < Palette1Workpieces.Count; i++)
-            {
-                Palette1Workpieces[i].State = (WorkpieceState)paletteValues[i];
-            }
-            // Nächste 8 Werte: Palette 2
-            for (int i = 0; i < 8 && i < Palette2Workpieces.Count; i++)
-            {
-                Palette2Workpieces[i].State = (WorkpieceState)paletteValues[8 + i];
-            }
-        }
-
-        // Lese alle 28 Regal-Werte
-        var shelfValues = await RobotService.ReadRegistersAsync(shelfBaseAddress, 28);
-        if (shelfValues != null)
-        {
-            for (int i = 0; i < 28 && i < ShelfWorkpieces.Count; i++)
-            {
-                ShelfWorkpieces[i].State = (WorkpieceState)shelfValues[i];
-            }
-        }
-
-        // Lese Sequence-Register (101-116) in einem Batch
-        var sequenceValues = await RobotService.ReadRegistersAsync(101, 16);
-        if (sequenceValues != null)
-        {
-            // Erste 8 für Palette 1
-            for (int i = 0; i < 8 && i < Palette1Workpieces.Count; i++)
-            {
-                Palette1Workpieces[i].SequenceNumber = sequenceValues[i];
-            }
-            // Nächste 8 für Palette 2
-            for (int i = 0; i < 8 && i < Palette2Workpieces.Count; i++)
-            {
-                Palette2Workpieces[i].SequenceNumber = sequenceValues[8 + i];
-            }
-        }
-
-        // Mode wird NICHT aus Registern gelesen - ist immer Active beim Start
-        // Der Wechselmodus wird nur durch explizite User-Aktion aktiviert
-        Palette1Mode = PaletteMode.Active;
-        Palette2Mode = PaletteMode.Active;
-        ShelfMode = Laderoboter.UI.Components.Main.ShelfCard.ShelfMode.Active;
-
-        StateHasChanged();
-    }
+    // ENTFERNT: LoadPaletteDataFromRegisters()
+    // Daten werden jetzt automatisch über RobotMonitor Events geladen
+    // (Palette1Changes, Palette2Changes, ShelfChanges) sobald der RegisterCache aktualisiert wird
 
     private void TogglePalette1Mode()
     {

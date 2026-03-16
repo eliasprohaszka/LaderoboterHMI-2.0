@@ -142,6 +142,18 @@ public class RobotMonitor : IRobotMonitor
         _robotService = robotService;
         _registerCache = registerCache;
         _settings = settings;
+
+        // Bei Disconnect automatisch stoppen, damit lokaler Cache geleert wird
+        _robotService.StatusChanged += OnRobotStatusChanged;
+    }
+
+    private void OnRobotStatusChanged(object? sender, Events.RobotStatusChangedEventArgs e)
+    {
+        if (!e.Status.IsConnected && _isMonitoring)
+        {
+            // Verbindung getrennt - Monitor stoppen und Cache leeren
+            Stop();
+        }
     }
 
     public IObservable<RegisterChange> RegisterChanges => _registerChanges.AsObservable();
@@ -184,6 +196,13 @@ public class RobotMonitor : IRobotMonitor
             // Unsubscribe from cache events
             _registerCache.RegisterChanged -= OnRegisterChanged;
             _registerCache.CacheUpdated -= OnCacheUpdated;
+
+            // Clear local cache so next Start() triggers initial snapshots
+            _localCache.Clear();
+            _lastPalette1 = null;
+            _lastPalette2 = null;
+            _lastShelf = null;
+            _lastStatus = null;
         }
     }
 
@@ -212,6 +231,8 @@ public class RobotMonitor : IRobotMonitor
 
         // Refresh local cache from central cache for all registers
         // This ensures snapshots use the latest values
+        bool wasEmpty = _localCache.Count == 0;
+
         for (int addr = 1; addr <= 200; addr++)
         {
             var value = _registerCache.GetRegister(addr);
@@ -219,6 +240,16 @@ public class RobotMonitor : IRobotMonitor
             {
                 _localCache[addr] = value.Value;
             }
+        }
+
+        // Bei initialem Load (nach Connect/Reconnect) alle Snapshots emittieren
+        // damit die UI die aktuellen Werte anzeigt
+        if (wasEmpty && _localCache.Count > 0)
+        {
+            EmitPalette1Snapshot();
+            EmitPalette2Snapshot();
+            EmitShelfSnapshot();
+            EmitStatusChange();
         }
     }
 
@@ -402,6 +433,8 @@ public class RobotMonitor : IRobotMonitor
         if (_disposed) return;
 
         Stop();
+
+        _robotService.StatusChanged -= OnRobotStatusChanged;
 
         _registerChanges.Dispose();
         _palette1Changes.Dispose();
