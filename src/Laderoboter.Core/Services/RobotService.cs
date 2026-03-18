@@ -22,6 +22,9 @@ public class RobotService : IRobotService
     // RegisterCache für Read-Operationen (wird nach Konstruktion gesetzt um zirkuläre Abhängigkeit zu vermeiden)
     private IRegisterCacheService? _registerCache;
 
+    // TaskStatusMonitor für aktive MAIN-Programm-Überwachung (wird nach Konstruktion gesetzt)
+    private ITaskStatusMonitor? _taskStatusMonitor;
+
     // Door Handshake Monitor
     private System.Threading.Timer? _handshakeTimer;
     private readonly object _handshakeLock = new();
@@ -109,6 +112,30 @@ public class RobotService : IRobotService
         _registerCache = registerCache;
     }
 
+    /// <summary>
+    /// Setzt den TaskStatusMonitor für aktive MAIN-Programm-Überwachung.
+    /// Wird nach Konstruktion aufgerufen um zirkuläre Abhängigkeit zu vermeiden.
+    /// </summary>
+    public void SetTaskStatusMonitor(ITaskStatusMonitor taskStatusMonitor)
+    {
+        _taskStatusMonitor = taskStatusMonitor;
+        _taskStatusMonitor.MainProgramStatusChanged += OnMainProgramStatusChanged;
+    }
+
+    private void OnMainProgramStatusChanged(object? sender, MainProgramStatusChangedEventArgs e)
+    {
+        // Update Status mit aktiv überwachten Werten
+        Status.IsMainProgramRunning = e.IsRunning;
+        Status.IsProgramPaused = e.IsPaused;
+        Status.CurrentProgram = e.ProgramName;
+        Status.LastUpdated = DateTime.UtcNow;
+
+        // Auch das legacy IsRunning Flag aktualisieren für Abwärtskompatibilität
+        Status.IsRunning = e.IsRunning;
+
+        OnStatusChanged();
+    }
+
     public event EventHandler<RobotStatusChangedEventArgs>? StatusChanged;
     public event EventHandler<RegisterChangedEventArgs>? RegisterChanged;
     public event EventHandler<PaletteChangedEventArgs>? PaletteChanged;
@@ -148,8 +175,24 @@ public class RobotService : IRobotService
 
             if (_isConnected)
             {
+                // Setup remote master control for program execution
+                // Required for Telnet.Run() to work
+                try
+                {
+                    _robot.Snpx.IntegerSystemVariables.Write("$RMT_MASTER", 1);
+                    _robot.Snpx.IntegerSystemVariables.Write("$REMOTE_CFG.$REMOTE_TYPE", 1);
+                }
+                catch (Exception ex)
+                {
+                    await _errorLog.LogAsync($"Warning: Failed to set remote master control: {ex.Message}",
+                        ErrorSeverity.Warning, ErrorSource.Robot);
+                }
+
                 // Initialize batch assignments for fast register reading
                 InitializeBatchAssignments();
+
+                // Start task status monitoring for MAIN program detection
+                _taskStatusMonitor?.Start();
 
                 Status.IsConnected = true;
                 Status.IpAddress = connectionPath;
@@ -184,6 +227,9 @@ public class RobotService : IRobotService
 
     public Task DisconnectAsync()
     {
+        // Stop task status monitoring
+        _taskStatusMonitor?.Stop();
+
         DisposeBatchAssignments();
 
         if (_robot != null)
@@ -194,6 +240,9 @@ public class RobotService : IRobotService
 
         _isConnected = false;
         Status.IsConnected = false;
+        Status.IsMainProgramRunning = false;
+        Status.IsProgramPaused = false;
+        Status.IsRunning = false;
         Status.LastUpdated = DateTime.UtcNow;
         OnStatusChanged();
 
@@ -248,7 +297,7 @@ public class RobotService : IRobotService
 
         try
         {
-            var result = _robot.Telnet.Abort();
+            var result = _robot.Telnet.AbortAll();
             if (result.Succeed)
             {
                 Status.IsRunning = false;
@@ -260,6 +309,29 @@ public class RobotService : IRobotService
         catch (Exception ex)
         {
             await _errorLog.LogAsync($"Failed to stop program: {ex.Message}",
+                ErrorSeverity.Error, ErrorSource.Robot);
+            return false;
+        }
+    }
+
+    public async Task<bool> AbortAllAsync()
+    {
+        if (_robot == null || !IsConnected) return false;
+
+        try
+        {
+            var result = _robot.Telnet.AbortAll(true);
+            if (result.Succeed)
+            {
+                Status.IsRunning = false;
+                Status.CurrentProgram = null;
+                OnStatusChanged();
+            }
+            return result.Succeed;
+        }
+        catch (Exception ex)
+        {
+            await _errorLog.LogAsync($"Failed to abort all programs: {ex.Message}",
                 ErrorSeverity.Error, ErrorSource.Robot);
             return false;
         }
@@ -902,6 +974,13 @@ public class RobotService : IRobotService
     public void Dispose()
     {
         if (_disposed) return;
+
+        // Stop task status monitoring and unsubscribe
+        if (_taskStatusMonitor != null)
+        {
+            _taskStatusMonitor.MainProgramStatusChanged -= OnMainProgramStatusChanged;
+            _taskStatusMonitor.Stop();
+        }
 
         _handshakeTimer?.Dispose();
         _handshakeTimer = null;

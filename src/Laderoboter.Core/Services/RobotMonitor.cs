@@ -153,12 +153,34 @@ public class RobotMonitor : IRobotMonitor
         _robotService.StatusChanged += OnRobotStatusChanged;
     }
 
+    // Track previous program running state to detect changes
+    private bool _lastProgramRunningState;
+
     private void OnRobotStatusChanged(object? sender, Events.RobotStatusChangedEventArgs e)
     {
         if (!e.Status.IsConnected && _isMonitoring)
         {
             // Verbindung getrennt - Monitor stoppen und Cache leeren
             Stop();
+            return;
+        }
+
+        // Wenn sich der Programm-Status ändert, müssen wir neue Snapshots mit den korrekten
+        // Register-Adressen emittieren (R50-65 wenn MAIN läuft, R150-165 wenn nicht)
+        if (_isMonitoring && e.Status.IsMainProgramRunning != _lastProgramRunningState)
+        {
+            _lastProgramRunningState = e.Status.IsMainProgramRunning;
+            Console.WriteLine($"[RobotMonitor] Program running state changed to: {_lastProgramRunningState}, re-emitting snapshots with correct registers");
+
+            // Reset last snapshots to force re-emission with new register addresses
+            _lastPalette1 = null;
+            _lastPalette2 = null;
+            _lastShelf = null;
+
+            // Emit new snapshots from the correct register range
+            EmitPalette1Snapshot();
+            EmitPalette2Snapshot();
+            EmitShelfSnapshot();
         }
     }
 
@@ -275,7 +297,7 @@ public class RobotMonitor : IRobotMonitor
 
     private void ProcessRegisterChange(RegisterChange change)
     {
-        bool programRunning = _robotService.Status.IsRunning;
+        bool programRunning = _robotService.Status.IsMainProgramRunning;
 
         // Palette 1 Register (50-57 wenn läuft, 150-157 wenn nicht läuft)
         if ((programRunning && change.Address is >= 50 and <= 57) ||
@@ -321,7 +343,7 @@ public class RobotMonitor : IRobotMonitor
     private void EmitPalette1Snapshot()
     {
         // Prüfe ob Programm läuft (basierend auf RobotService Status)
-        bool programRunning = _robotService.Status.IsRunning;
+        bool programRunning = _robotService.Status.IsMainProgramRunning;
 
         // Wähle die richtigen Register basierend auf Programm-Status
         // Runtime: 50-57, Idle: 150-157
@@ -352,7 +374,7 @@ public class RobotMonitor : IRobotMonitor
     private void EmitPalette2Snapshot()
     {
         // Prüfe ob Programm läuft (basierend auf RobotService Status)
-        bool programRunning = _robotService.Status.IsRunning;
+        bool programRunning = _robotService.Status.IsMainProgramRunning;
 
         // Wähle die richtigen Register basierend auf Programm-Status
         // Runtime: 58-65, Idle: 158-165
@@ -382,7 +404,7 @@ public class RobotMonitor : IRobotMonitor
     private void EmitShelfSnapshot()
     {
         // Prüfe ob Programm läuft (basierend auf RobotService Status)
-        bool programRunning = _robotService.Status.IsRunning;
+        bool programRunning = _robotService.Status.IsMainProgramRunning;
 
         // Wähle die richtigen Register basierend auf Programm-Status
         // Runtime: 66-93 (28 Register), Idle: 166-193 (28 Register)

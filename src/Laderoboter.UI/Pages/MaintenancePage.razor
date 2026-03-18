@@ -5,9 +5,22 @@
 @inject IRegisterErrorService RegisterErrorService
 @inject ISystemService SystemService
 @inject ITranslationService T
+@inject IAuthorizationService Authorization
 @inject NavigationManager Navigation
 @implements IDisposable
 
+@if (!Authorization.CanAccessMaintenance())
+{
+    <div class="h-full flex items-center justify-center">
+        <div class="bg-red-100 border border-red-300 rounded-xl p-8 text-center">
+            <Blazicon Svg="Lucide.ShieldX" class="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 class="text-xl font-bold text-red-700">@T.Translate("common.error")</h2>
+            <p class="text-red-600 mt-2">@T.Translate("users.noAccess")</p>
+        </div>
+    </div>
+}
+else
+{
 <div class="h-full">
     <!-- Maintenance Section - Touch Optimized with Glassmorphism -->
     <div class="glass-card w-full h-full flex flex-col overflow-hidden">
@@ -201,6 +214,7 @@
 <!-- IO Signals Dialog -->
 <IoSignalsDialog IsVisible="@showIOSignalsDialog"
                 OnClose="() => showIOSignalsDialog = false" />
+}
 
 @code {
     // Dialog states

@@ -1,5 +1,6 @@
 @inject IRobotService RobotService
 @inject ITranslationService T
+@inject IAuthorizationService Authorization
 @implements IDisposable
 
 @if (IsVisible)
@@ -40,18 +41,27 @@
                                                     <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500" : "bg-red-500")"></div>
                                                     <span class="font-mono text-xs font-medium text-gray-900 truncate">@signal.Name</span>
                                                 </div>
-                                                <div class="flex gap-1 flex-shrink-0">
-                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(signal.Value ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600")"
-                                                            disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
-                                                            @onclick="() => ToggleInput(signal, true)">
-                                                        ON
-                                                    </button>
-                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-300 text-gray-600")"
-                                                            disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
-                                                            @onclick="() => ToggleInput(signal, false)">
-                                                        OFF
-                                                    </button>
-                                                </div>
+                                                @if (Authorization.CanEditIO())
+                                                {
+                                                    <div class="flex gap-1 flex-shrink-0">
+                                                        <button class="h-6 px-2.5 text-xs font-medium rounded @(signal.Value ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600")"
+                                                                disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
+                                                                @onclick="() => ToggleInput(signal, true)">
+                                                            ON
+                                                        </button>
+                                                        <button class="h-6 px-2.5 text-xs font-medium rounded @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-300 text-gray-600")"
+                                                                disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
+                                                                @onclick="() => ToggleInput(signal, false)">
+                                                            OFF
+                                                        </button>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-xs font-medium @(signal.Value ? "text-green-600" : "text-red-600")">
+                                                        @(signal.Value ? "ON" : "OFF")
+                                                    </span>
+                                                }
                                             </div>
                                         }
                                     </div>
@@ -76,18 +86,27 @@
                                                     <div class="w-2.5 h-2.5 rounded-full flex-shrink-0 @(signal.Value ? "bg-green-500" : "bg-red-500")"></div>
                                                     <span class="font-mono text-xs font-medium text-gray-900 truncate">@signal.Name</span>
                                                 </div>
-                                                <div class="flex gap-1 flex-shrink-0">
-                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(signal.Value ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600")"
-                                                            disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
-                                                            @onclick="() => ToggleOutput(signal, true)">
-                                                        ON
-                                                    </button>
-                                                    <button class="h-6 px-2.5 text-xs font-medium rounded @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-300 text-gray-600")"
-                                                            disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
-                                                            @onclick="() => ToggleOutput(signal, false)">
-                                                        OFF
-                                                    </button>
-                                                </div>
+                                                @if (Authorization.CanEditIO())
+                                                {
+                                                    <div class="flex gap-1 flex-shrink-0">
+                                                        <button class="h-6 px-2.5 text-xs font-medium rounded @(signal.Value ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600")"
+                                                                disabled="@(loadingSignals.Contains(signal.Address) || signal.Value)"
+                                                                @onclick="() => ToggleOutput(signal, true)">
+                                                            ON
+                                                        </button>
+                                                        <button class="h-6 px-2.5 text-xs font-medium rounded @(!signal.Value ? "bg-red-600 text-white" : "bg-gray-300 text-gray-600")"
+                                                                disabled="@(loadingSignals.Contains(signal.Address) || !signal.Value)"
+                                                                @onclick="() => ToggleOutput(signal, false)">
+                                                            OFF
+                                                        </button>
+                                                    </div>
+                                                }
+                                                else
+                                                {
+                                                    <span class="text-xs font-medium @(signal.Value ? "text-green-600" : "text-red-600")">
+                                                        @(signal.Value ? "ON" : "OFF")
+                                                    </span>
+                                                }
                                             </div>
                                         }
                                     </div>

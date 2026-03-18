@@ -21,6 +21,7 @@ public interface IRobotService : IDisposable
     Task<IEnumerable<string>> GetProgramsAsync();
     Task<bool> RunProgramAsync(string programName);
     Task<bool> StopProgramAsync();
+    Task<bool> AbortAllAsync();
     Task<bool> PauseProgramAsync();
     Task<bool> ResumeProgramAsync();
     Task<bool> ResetAsync();

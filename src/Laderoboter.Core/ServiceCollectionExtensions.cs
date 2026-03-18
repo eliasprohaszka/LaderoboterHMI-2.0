@@ -23,6 +23,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRobotRequestQueue, RobotRequestQueue>();
         services.AddSingleton<IRobotService, RobotService>();
         services.AddSingleton<IRegisterCacheService, RegisterCacheService>();
+        services.AddSingleton<ITaskStatusMonitor, TaskStatusMonitor>();
         services.AddSingleton<IRobotMonitor, RobotMonitor>();
         services.AddSingleton<IRobotAlarmService, RobotAlarmService>();
         services.AddSingleton<IRegisterErrorService, RegisterErrorService>();
@@ -59,13 +60,15 @@ public static class ServiceCollectionExtensions
 
     /// <summary>
     /// Initialisiert die Service-Verbindungen nach DI-Container-Erstellung.
-    /// Löst zirkuläre Abhängigkeiten zwischen RobotService und RegisterCacheService.
+    /// Löst zirkuläre Abhängigkeiten zwischen RobotService, RegisterCacheService und TaskStatusMonitor.
     /// </summary>
     public static void InitializeServiceConnections(this IServiceProvider serviceProvider)
     {
         var robotService = serviceProvider.GetRequiredService<IRobotService>() as RobotService;
         var registerCache = serviceProvider.GetRequiredService<IRegisterCacheService>();
+        var taskStatusMonitor = serviceProvider.GetRequiredService<ITaskStatusMonitor>();
 
         robotService?.SetRegisterCache(registerCache);
+        robotService?.SetTaskStatusMonitor(taskStatusMonitor);
     }
 }

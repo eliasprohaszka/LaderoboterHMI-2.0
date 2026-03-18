@@ -28,3 +28,11 @@ public class ErrorOccurredEventArgs : EventArgs
     public ErrorSeverity Severity { get; init; }
     public ErrorSource Source { get; init; }
 }
+
+public class MainProgramStatusChangedEventArgs : EventArgs
+{
+    public bool IsRunning { get; init; }
+    public bool IsPaused { get; init; }
+    public string? ProgramName { get; init; }
+    public DateTime Timestamp { get; init; } = DateTime.UtcNow;
+}

@@ -2,10 +2,18 @@
    ProgramControl - Touch Optimized Control Grid
    =========================================== */
 
-/* Grid layout for control buttons */
+/* Grid layout for control buttons - Full (GH Admin) */
 .control-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    width: 100%;
+}
+
+/* Grid layout for limited control buttons - 3 in a row (Pause, Stop, Reset) */
+.control-grid-limited {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
     width: 100%;
 }
@@ -98,6 +106,10 @@
 /* Responsive adjustments */
 @media (max-width: 640px) {
     .control-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .control-grid-limited {
         grid-template-columns: 1fr;
     }
 

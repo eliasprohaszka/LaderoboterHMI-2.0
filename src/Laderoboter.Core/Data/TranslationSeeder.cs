@@ -429,9 +429,11 @@ public static class TranslationSeeder
         Add("users.roles.bediener", "Bediener", "Operator", "users");
         Add("users.roles.einrichter", "Einrichter", "Setup", "users");
         Add("users.roles.admin", "Administrator", "Administrator", "users");
+        Add("users.roles.ghadmin", "GH Administrator", "GH Administrator", "users");
         Add("users.role.bediener", "Bediener", "Operator", "users");
         Add("users.role.einrichter", "Einrichter", "Setup", "users");
         Add("users.role.admin", "Administrator", "Administrator", "users");
+        Add("users.role.ghadmin", "GH Administrator", "GH Administrator", "users");
         Add("users.noAccess", "Zugriff verweigert. Nur Administratoren können diese Seite sehen.", "Access denied. Only administrators can view this page.", "users");
         Add("users.add", "Benutzer hinzufügen", "Add User", "users");
         Add("users.status", "Status", "Status", "users");

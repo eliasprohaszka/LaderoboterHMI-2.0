@@ -38,9 +38,13 @@ public class AuthorizationService : IAuthorizationService
         if (currentRole == null)
             return false;
 
-        // Admin hat alle Berechtigungen
-        if (currentRole == UserRole.Admin)
+        // GH Admin hat alle Berechtigungen
+        if (currentRole == UserRole.GHAdmin)
             return true;
+
+        // Admin hat alle Berechtigungen außer GHAdmin-spezifische
+        if (currentRole == UserRole.Admin)
+            return requiredRole <= UserRole.Admin;
 
         // Einrichter hat Einrichter und Bediener Berechtigungen
         if (currentRole == UserRole.Einrichter)
@@ -50,18 +54,62 @@ public class AuthorizationService : IAuthorizationService
         return currentRole.Value >= requiredRole;
     }
 
+    public bool IsGHAdmin()
+    {
+        return GetCurrentRole() == UserRole.GHAdmin;
+    }
+
     public bool IsAdmin()
     {
-        return GetCurrentRole() == UserRole.Admin;
+        var role = GetCurrentRole();
+        return role == UserRole.Admin || role == UserRole.GHAdmin;
     }
 
     public bool IsEinrichter()
     {
-        return HasRole(UserRole.Einrichter);
+        var role = GetCurrentRole();
+        return role >= UserRole.Einrichter;
     }
 
     public bool IsBediener()
     {
-        return HasRole(UserRole.Bediener);
+        var role = GetCurrentRole();
+        return role >= UserRole.Bediener;
+    }
+
+    public bool CanEditIO()
+    {
+        // Nur GH Admin darf I/O Signale ändern
+        return IsGHAdmin();
+    }
+
+    public bool CanAccessMaintenance()
+    {
+        // Einrichter, Admin, GH Admin
+        return IsEinrichter();
+    }
+
+    public bool CanAccessSettings()
+    {
+        // Einrichter, Admin, GH Admin
+        return IsEinrichter();
+    }
+
+    public bool CanAccessUserManagement()
+    {
+        // Admin, GH Admin
+        return IsAdmin();
+    }
+
+    public bool CanAccessActionLog()
+    {
+        // Admin, GH Admin
+        return IsAdmin();
+    }
+
+    public bool CanAccessTranslations()
+    {
+        // Admin, GH Admin
+        return IsAdmin();
     }
 }

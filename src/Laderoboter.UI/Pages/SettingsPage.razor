@@ -2,10 +2,23 @@
 @inject ISettingsService Settings
 @inject IRobotService RobotService
 @inject ITranslationService T
+@inject IAuthorizationService Authorization
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IDisposable
 
+@if (!Authorization.CanAccessSettings())
+{
+    <div class="h-full flex items-center justify-center">
+        <div class="bg-red-100 border border-red-300 rounded-xl p-8 text-center">
+            <Blazicon Svg="Lucide.ShieldX" class="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 class="text-xl font-bold text-red-700">@T.Translate("common.error")</h2>
+            <p class="text-red-600 mt-2">@T.Translate("users.noAccess")</p>
+        </div>
+    </div>
+}
+else
+{
 <div class="h-full">
     <!-- Settings Section (exact match to settings.vue) -->
     <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
@@ -48,19 +61,31 @@
                             <Blazicon Svg="Lucide.Upload" class="dropdown-item-icon" />
                             <span>@T.Translate("settings.import")</span>
                         </button>
-                        <div class="dropdown-divider"></div>
-                        <button class="dropdown-item" @onclick="NavigateToTranslationsAndClose">
-                            <Blazicon Svg="Lucide.Globe" class="dropdown-item-icon" />
-                            <span>@T.Translate("settings.language.manageTranslations")</span>
-                        </button>
-                        <button class="dropdown-item" @onclick="NavigateToUsersAndClose">
-                            <Blazicon Svg="Lucide.Users" class="dropdown-item-icon" />
-                            <span>@T.Translate("users.title")</span>
-                        </button>
-                        <button class="dropdown-item" @onclick="NavigateToActionLogAndClose">
-                            <Blazicon Svg="Lucide.ScrollText" class="dropdown-item-icon" />
-                            <span>@T.Translate("actionLog.title")</span>
-                        </button>
+                        @if (Authorization.CanAccessTranslations() || Authorization.CanAccessUserManagement() || Authorization.CanAccessActionLog())
+                        {
+                            <div class="dropdown-divider"></div>
+                        }
+                        @if (Authorization.CanAccessTranslations())
+                        {
+                            <button class="dropdown-item" @onclick="NavigateToTranslationsAndClose">
+                                <Blazicon Svg="Lucide.Globe" class="dropdown-item-icon" />
+                                <span>@T.Translate("settings.language.manageTranslations")</span>
+                            </button>
+                        }
+                        @if (Authorization.CanAccessUserManagement())
+                        {
+                            <button class="dropdown-item" @onclick="NavigateToUsersAndClose">
+                                <Blazicon Svg="Lucide.Users" class="dropdown-item-icon" />
+                                <span>@T.Translate("users.title")</span>
+                            </button>
+                        }
+                        @if (Authorization.CanAccessActionLog())
+                        {
+                            <button class="dropdown-item" @onclick="NavigateToActionLogAndClose">
+                                <Blazicon Svg="Lucide.ScrollText" class="dropdown-item-icon" />
+                                <span>@T.Translate("actionLog.title")</span>
+                            </button>
+                        }
                     </ActionDropdown>
                 </div>
             </div>
@@ -176,6 +201,7 @@
     Title="@infoDialogTitle"
     Message="@infoDialogMessage"
     OnClose="() => showInfoDialog = false" />
+}
 
 @code {
     // Components

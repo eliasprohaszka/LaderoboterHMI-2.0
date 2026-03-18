@@ -66,8 +66,8 @@ public static class DatabaseInitializer
             {
                 PersonalNumber = "admin",
                 PasswordHash = passwordService.HashPassword("admin"),
-                Role = UserRole.Admin,
-                Name = "Administrator",
+                Role = UserRole.GHAdmin,
+                Name = "GH Administrator",
                 IsActive = true,
                 CreatedAt = now
             }

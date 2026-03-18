@@ -47,26 +47,32 @@
             <!-- Navigation Buttons (animiert) -->
             <div class="nav-buttons-container @(showNavigationMenu ? "nav-open" : "nav-closed")">
                 <div class="nav-buttons">
-                    <!-- Dashboard Button -->
+                    <!-- Dashboard Button - Visible for all users -->
                     <button @onclick='() => NavigateTo("/")'
                             class="robot-control-btn btn-icon @GetNavButtonClass("/")"
                             title="@T.Translate("header.dashboard")">
                         <Blazicon Svg="Lucide.LayoutGrid" class="w-5 h-5" />
                     </button>
 
-                    <!-- Settings Button -->
-                    <button @onclick='() => NavigateTo("/settings")'
-                            class="robot-control-btn btn-icon @GetNavButtonClass("/settings")"
-                            title="@T.Translate("header.settings")">
-                        <Blazicon Svg="Lucide.Settings" class="w-5 h-5" />
-                    </button>
+                    <!-- Settings Button - Einrichter and above -->
+                    @if (Authorization.CanAccessSettings())
+                    {
+                        <button @onclick='() => NavigateTo("/settings")'
+                                class="robot-control-btn btn-icon @GetNavButtonClass("/settings")"
+                                title="@T.Translate("header.settings")">
+                            <Blazicon Svg="Lucide.Settings" class="w-5 h-5" />
+                        </button>
+                    }
 
-                    <!-- Maintenance Button -->
-                    <button @onclick='() => NavigateTo("/maintenance")'
-                            class="robot-control-btn btn-icon @GetNavButtonClass("/maintenance")"
-                            title="@T.Translate("header.maintenance")">
-                        <Blazicon Svg="Lucide.Wrench" class="w-5 h-5" />
-                    </button>
+                    <!-- Maintenance Button - Einrichter and above -->
+                    @if (Authorization.CanAccessMaintenance())
+                    {
+                        <button @onclick='() => NavigateTo("/maintenance")'
+                                class="robot-control-btn btn-icon @GetNavButtonClass("/maintenance")"
+                                title="@T.Translate("header.maintenance")">
+                            <Blazicon Svg="Lucide.Wrench" class="w-5 h-5" />
+                        </button>
+                    }
 
                     <!-- User Button -->
                     @if (AuthState.IsAuthenticated)
@@ -85,7 +91,7 @@
                                         <div class="dropdown-name">@(AuthState.CurrentUser?.Name ?? AuthState.CurrentUser?.PersonalNumber)</div>
                                         <div class="dropdown-role">@GetRoleDisplayName(AuthState.CurrentUser?.Role)</div>
                                     </div>
-                                    @if (Authorization.IsAdmin())
+                                    @if (Authorization.CanAccessUserManagement())
                                     {
                                         <button @onclick="NavigateToUserManagement"
                                                 class="dropdown-item">
@@ -242,6 +248,7 @@
 
     private string GetRoleDisplayName(UserRole? role) => role switch
     {
+        UserRole.GHAdmin => T.Translate("users.role.ghadmin"),
         UserRole.Admin => T.Translate("users.role.admin"),
         UserRole.Einrichter => T.Translate("users.role.einrichter"),
         UserRole.Bediener => T.Translate("users.role.bediener"),
