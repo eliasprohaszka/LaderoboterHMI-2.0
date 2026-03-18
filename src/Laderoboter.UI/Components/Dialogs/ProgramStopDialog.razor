@@ -1,0 +1,130 @@
+@inject IRobotService RobotService
+@inject IAutostopHandshakeService AutostopService
+@inject ITranslationService T
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay">
+        <div class="dialog max-w-lg" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <Blazicon Svg="Lucide.TriangleAlert" class="h-6 w-6 text-yellow-500" />
+                    </div>
+                    <h3 class="dialog-title">@T.Translate("dialog.programRunning.title")</h3>
+                </div>
+            </div>
+
+            <div class="dialog-body">
+                <p class="text-sm text-black mb-4">@T.Translate("dialog.programRunning.message")</p>
+
+                @if (_isAutostopActive)
+                {
+                    <div class="flex items-center justify-center p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div class="flex items-center space-x-3">
+                            <Blazicon Svg="Lucide.RotateCcw" class="h-5 w-5 text-yellow-600 animate-spin" />
+                            <span class="text-yellow-700 font-medium">@T.Translate("dialog.programRunning.waitingForStop")</span>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="dialog-footer">
+                <button class="btn btn-secondary"
+                        @onclick="OnCancel"
+                        disabled="@_isAutostopActive">
+                    @T.Translate("common.cancel")
+                </button>
+
+                <button class="btn btn-yellow"
+                        @onclick="OnAutostop"
+                        disabled="@_isAutostopActive">
+                    <Blazicon Svg="Lucide.CircleStop" class="w-4 h-4 mr-2" />
+                    @(_isAutostopActive ? T.Translate("program.stopping") : T.Translate("program.autostop"))
+                </button>
+
+                <button class="btn btn-danger"
+                        @onclick="OnAbortAll"
+                        disabled="@_isAutostopActive">
+                    <Blazicon Svg="Lucide.Square" class="w-4 h-4 mr-2" />
+                    @T.Translate("dialog.programRunning.stop")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnNavigate { get; set; }
+    [Parameter] public EventCallback OnCancelled { get; set; }
+
+    private bool _isAutostopActive;
+    private bool _wasVisible;
+
+    protected override void OnInitialized()
+    {
+        // Subscribe to handshake completion event
+        AutostopService.HandshakeCompleted += OnHandshakeCompleted;
+    }
+
+    protected override void OnParametersSet()
+    {
+        // Reset state when dialog becomes visible
+        if (IsVisible && !_wasVisible)
+        {
+            _isAutostopActive = AutostopService.IsAutostopActive;
+        }
+        _wasVisible = IsVisible;
+    }
+
+    private void OnHandshakeCompleted(object? sender, AutostopHandshakeCompletedEventArgs e)
+    {
+        // Handshake completed (R86 = 1 detected, R186 reset)
+        _isAutostopActive = false;
+        InvokeAsync(async () =>
+        {
+            await OnNavigate.InvokeAsync();
+        });
+    }
+
+    private async Task OnAutostop()
+    {
+        var result = await AutostopService.StartAutostopAsync();
+        if (result)
+        {
+            _isAutostopActive = true;
+        }
+        // If autostop fails, do nothing - user can choose to use "Sofort stoppen" instead
+    }
+
+    private async Task OnAbortAll()
+    {
+        // Cancel any pending autostop
+        if (_isAutostopActive)
+        {
+            await AutostopService.CancelAutostopAsync();
+        }
+
+        await RobotService.AbortAllAsync();
+        await OnNavigate.InvokeAsync();
+    }
+
+    private async Task OnCancel()
+    {
+        // Cancel any pending autostop
+        if (_isAutostopActive)
+        {
+            await AutostopService.CancelAutostopAsync();
+        }
+
+        _isAutostopActive = false;
+        await OnCancelled.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        AutostopService.HandshakeCompleted -= OnHandshakeCompleted;
+    }
+}

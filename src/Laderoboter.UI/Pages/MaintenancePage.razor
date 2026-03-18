@@ -214,6 +214,10 @@ else
 <!-- IO Signals Dialog -->
 <IoSignalsDialog IsVisible="@showIOSignalsDialog"
                 OnClose="() => showIOSignalsDialog = false" />
+
+<!-- Maintenance Exit Dialog -->
+<MaintenanceExitDialog IsVisible="@showExitDialog"
+                       OnNavigate="ConfirmExit" />
 }
 
 @code {
@@ -226,6 +230,7 @@ else
     private bool showShutdownCountdownDialog = false;
     private bool showRestartCountdownDialog = false;
     private bool showIOSignalsDialog = false;
+    private bool showExitDialog = false;
 
     // Countdown states
     private int shutdownCountdown = 0;
@@ -448,6 +453,20 @@ else
 
     private void NavigateBack()
     {
+        // Zeige Exit-Dialog wenn Roboter verbunden ist
+        if (RobotService.IsConnected)
+        {
+            showExitDialog = true;
+        }
+        else
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void ConfirmExit()
+    {
+        showExitDialog = false;
         Navigation.NavigateTo("/");
     }
 

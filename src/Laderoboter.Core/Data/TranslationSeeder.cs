@@ -357,6 +357,21 @@ public static class TranslationSeeder
         Add("dialog.confirmation", "Bestätigung", "Confirmation", "dialog");
         Add("dialog.confirmMessage", "Möchten Sie fortfahren?", "Do you want to continue?", "dialog");
 
+        // === Program Running Dialog ===
+        Add("dialog.programRunning.title", "Programm läuft", "Program Running", "dialog");
+        Add("dialog.programRunning.message", "Das Programm 'main' läuft noch. Um die Seite zu wechseln, muss das Programm zuerst gestoppt werden.", "The 'main' program is still running. To change the page, the program must be stopped first.", "dialog");
+        Add("dialog.programRunning.stop", "Sofort stoppen", "Stop Now", "dialog");
+        Add("dialog.programRunning.waitingForStop", "Warte auf Programm-Ende...", "Waiting for program to stop...", "dialog");
+
+        // === Maintenance Exit Dialog ===
+        Add("dialog.maintenanceExit.title", "Wartungsseite verlassen", "Leave Maintenance Page", "dialog");
+        Add("dialog.maintenanceExit.message", "Wie möchten Sie die Paletten vorbereiten?", "How do you want to prepare the palettes?", "dialog");
+        Add("dialog.maintenanceExit.justSwitch", "Nur wechseln", "Just switch", "dialog");
+        Add("dialog.maintenanceExit.lockAll", "Alle sperren", "Lock all", "dialog");
+        Add("dialog.maintenanceExit.resetAll", "Alle zurücksetzen", "Reset all", "dialog");
+        Add("dialog.maintenanceExit.locking", "Sperren...", "Locking...", "dialog");
+        Add("dialog.maintenanceExit.resetting", "Zurücksetzen...", "Resetting...", "dialog");
+
         // === Wait Messages ===
         Add("wait.doorRelease", "Warte auf Türfreigabe R[{0}] = {1} (erwartet: 1)", "Waiting for door release R[{0}] = {1} (expected: 1)", "wait");
         Add("wait.closeDoor", "Bitte Tür von Palette {0} schließen!", "Please close door of palette {0}!", "wait");

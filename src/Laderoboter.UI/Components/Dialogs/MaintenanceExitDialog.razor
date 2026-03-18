@@ -1,0 +1,159 @@
+@inject IRobotService RobotService
+@inject ITranslationService T
+
+@if (IsVisible)
+{
+    <div class="dialog-overlay">
+        <div class="dialog max-w-lg" @onclick:stopPropagation="true">
+            <div class="dialog-header">
+                <div class="flex items-center space-x-3">
+                    <div class="flex-shrink-0">
+                        <Blazicon Svg="Lucide.Settings" class="h-6 w-6 text-blue-500" />
+                    </div>
+                    <h3 class="dialog-title">@T.Translate("dialog.maintenanceExit.title")</h3>
+                </div>
+            </div>
+
+            <div class="dialog-body">
+                <p class="text-sm text-black mb-4">@T.Translate("dialog.maintenanceExit.message")</p>
+            </div>
+
+            <div class="exit-dialog-footer">
+                <button class="exit-btn exit-btn-secondary"
+                        @onclick="OnJustNavigate"
+                        disabled="@_isProcessing">
+                    @T.Translate("dialog.maintenanceExit.justSwitch")
+                </button>
+
+                <button class="exit-btn exit-btn-warning"
+                        @onclick="OnLockAll"
+                        disabled="@_isProcessing">
+                    @if (_isProcessing && _selectedAction == "lock")
+                    {
+                        <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4 mr-2 animate-spin" />
+                        <span>@T.Translate("dialog.maintenanceExit.locking")</span>
+                    }
+                    else
+                    {
+                        <Blazicon Svg="Lucide.Lock" class="w-4 h-4 mr-2" />
+                        <span>@T.Translate("dialog.maintenanceExit.lockAll")</span>
+                    }
+                </button>
+
+                <button class="exit-btn exit-btn-success"
+                        @onclick="OnResetAll"
+                        disabled="@_isProcessing">
+                    @if (_isProcessing && _selectedAction == "reset")
+                    {
+                        <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4 mr-2 animate-spin" />
+                        <span>@T.Translate("dialog.maintenanceExit.resetting")</span>
+                    }
+                    else
+                    {
+                        <Blazicon Svg="Lucide.RefreshCw" class="w-4 h-4 mr-2" />
+                        <span>@T.Translate("dialog.maintenanceExit.resetAll")</span>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsVisible { get; set; }
+    [Parameter] public EventCallback OnNavigate { get; set; }
+
+    private bool _isProcessing;
+    private string _selectedAction = "";
+
+    private async Task OnJustNavigate()
+    {
+        await OnNavigate.InvokeAsync();
+    }
+
+    private async Task OnLockAll()
+    {
+        _isProcessing = true;
+        _selectedAction = "lock";
+        StateHasChanged();
+
+        try
+        {
+            await LockAllWorkpieces();
+            await OnNavigate.InvokeAsync();
+        }
+        finally
+        {
+            _isProcessing = false;
+            _selectedAction = "";
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnResetAll()
+    {
+        _isProcessing = true;
+        _selectedAction = "reset";
+        StateHasChanged();
+
+        try
+        {
+            await ResetAllWorkpieces();
+            await OnNavigate.InvokeAsync();
+        }
+        finally
+        {
+            _isProcessing = false;
+            _selectedAction = "";
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Setzt alle Werkstücke auf beiden Paletten auf Status 1 (Locked/Gesperrt)
+    /// </summary>
+    private async Task LockAllWorkpieces()
+    {
+        // Palette 1: Positionen 1-8, Register R150-R157
+        for (int i = 0; i < 8; i++)
+        {
+            await RobotService.WriteRegisterAsync(150 + i, 1);
+        }
+
+        // Palette 2: Positionen 1-8, Register R158-R165
+        for (int i = 0; i < 8; i++)
+        {
+            await RobotService.WriteRegisterAsync(158 + i, 1);
+        }
+
+        // Trigger handshake R148 wenn Programm nicht läuft
+        if (!RobotService.Status.IsRunning)
+        {
+            await RobotService.WriteRegisterAsync(148, 1);
+        }
+    }
+
+    /// <summary>
+    /// Setzt alle Werkstücke auf beiden Paletten auf Status 2 (Unprocessed/Bereit)
+    /// </summary>
+    private async Task ResetAllWorkpieces()
+    {
+        // Palette 1: Positionen 1-8, Register R150-R157
+        for (int i = 0; i < 8; i++)
+        {
+            await RobotService.WriteRegisterAsync(150 + i, 2);
+        }
+
+        // Palette 2: Positionen 1-8, Register R158-R165
+        for (int i = 0; i < 8; i++)
+        {
+            await RobotService.WriteRegisterAsync(158 + i, 2);
+        }
+
+        // Trigger handshake R148 wenn Programm nicht läuft
+        if (!RobotService.Status.IsRunning)
+        {
+            await RobotService.WriteRegisterAsync(148, 1);
+        }
+    }
+}

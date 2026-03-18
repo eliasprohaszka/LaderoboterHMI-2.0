@@ -27,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRobotMonitor, RobotMonitor>();
         services.AddSingleton<IRobotAlarmService, RobotAlarmService>();
         services.AddSingleton<IRegisterErrorService, RegisterErrorService>();
+        services.AddSingleton<IAutostopHandshakeService, AutostopHandshakeService>();
         services.AddSingleton<ISystemService, SystemService>();
         services.AddSingleton<ITranslationService, TranslationService>();
 

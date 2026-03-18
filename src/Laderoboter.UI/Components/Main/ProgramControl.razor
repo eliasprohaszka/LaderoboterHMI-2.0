@@ -1,4 +1,5 @@
 @inject IRobotService RobotService
+@inject IAutostopHandshakeService AutostopService
 @inject ITranslationService T
 @inject IAuthorizationService Authorization
 @implements IDisposable
@@ -120,12 +121,13 @@ else
     // State is now read directly from RobotService.Status (actively monitored via SNPX TaskStatusMonitor)
     private bool IsMainProgramRunning => RobotService.Status.IsMainProgramRunning;
     private bool IsProgramPaused => RobotService.Status.IsProgramPaused;
-    private bool IsAutostopActive;
+    private bool IsAutostopActive => AutostopService.IsAutostopActive;
 
     protected override void OnInitialized()
     {
         // Subscribe to status changes - TaskStatusMonitor fires these events when MAIN program state changes
         RobotService.StatusChanged += OnStatusChanged;
+        AutostopService.HandshakeCompleted += OnHandshakeCompleted;
         T.LanguageChanged += OnLanguageChanged;
     }
 
@@ -145,11 +147,12 @@ else
 
     private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)
     {
-        // Reset autostop indicator when program stops
-        if (!e.Status.IsMainProgramRunning && IsAutostopActive)
-        {
-            IsAutostopActive = false;
-        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnHandshakeCompleted(object? sender, AutostopHandshakeCompletedEventArgs e)
+    {
+        // Autostop handshake completed - UI will update via IsAutostopActive property
         InvokeAsync(StateHasChanged);
     }
 
@@ -171,13 +174,7 @@ else
 
     private async Task AutostopProgram()
     {
-        IsAutostopActive = true;
-        var result = await RobotService.WriteRegisterAsync(186, 1);
-        if (!result)
-        {
-            IsAutostopActive = false;
-            await RobotService.StopProgramAsync();
-        }
+        await AutostopService.StartAutostopAsync();
     }
 
     private async Task PauseCurrentProgram()
@@ -195,21 +192,30 @@ else
 
     private async Task StopCurrentProgram()
     {
+        // Cancel any pending autostop before stopping
+        if (AutostopService.IsAutostopActive)
+        {
+            await AutostopService.CancelAutostopAsync();
+        }
         await RobotService.StopProgramAsync();
-        IsAutostopActive = false;
         // No need to set IsMainProgramRunning/IsProgramPaused - TaskStatusMonitor will detect it
     }
 
     private async Task ResetSystem()
     {
+        // Cancel any pending autostop before resetting
+        if (AutostopService.IsAutostopActive)
+        {
+            await AutostopService.CancelAutostopAsync();
+        }
         await RobotService.ResetAsync();
-        IsAutostopActive = false;
         // No need to set IsMainProgramRunning/IsProgramPaused - TaskStatusMonitor will detect it
     }
 
     public void Dispose()
     {
         RobotService.StatusChanged -= OnStatusChanged;
+        AutostopService.HandshakeCompleted -= OnHandshakeCompleted;
         T.LanguageChanged -= OnLanguageChanged;
     }
 }
