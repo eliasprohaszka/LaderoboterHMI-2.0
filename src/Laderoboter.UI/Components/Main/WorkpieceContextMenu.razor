@@ -91,20 +91,13 @@
     {
         if (Workpiece == null) return;
 
-        // Register address mapping:
-        // Wenn Programm läuft:  Palette 1 = R[50-57],  Palette 2 = R[58-65]
-        // Wenn Programm NICHT läuft: Palette 1 = R[150-157], Palette 2 = R[158-165]
-        //
-        // Workpiece.RegisterAddress enthält den "Programm läuft" Wert (50-57 oder 58-65)
-        // Wenn Programm nicht läuft, addieren wir 100
+        // Workpiece.Position ist 1-16 (1-8 = Palette 1, 9-16 = Palette 2)
+        // WriteWorkpieceRegisterWithHandshakeAsync kümmert sich um:
+        // - Register-Adresse (R150-R165)
+        // - Handshake-Protokoll (R149/R148/R48) wenn MAIN läuft
+        // - Direktes Schreiben + R148=1 wenn MAIN nicht läuft
 
-        bool programRunning = RobotService.Status.IsRunning;
-        int registerAddress = programRunning
-            ? Workpiece.RegisterAddress
-            : Workpiece.RegisterAddress + 100;
-
-        // Write to robot register
-        var success = await RobotService.WriteRegisterAsync(registerAddress, (int)newState);
+        var success = await RobotService.WriteWorkpieceRegisterWithHandshakeAsync(Workpiece.Position, (int)newState);
 
         if (success)
         {

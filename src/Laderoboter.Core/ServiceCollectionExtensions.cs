@@ -28,6 +28,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IRobotAlarmService, RobotAlarmService>();
         services.AddSingleton<IRegisterErrorService, RegisterErrorService>();
         services.AddSingleton<IAutostopHandshakeService, AutostopHandshakeService>();
+        services.AddSingleton<IPaletteHandshakeService, PaletteHandshakeService>();
         services.AddSingleton<ISystemService, SystemService>();
         services.AddSingleton<ITranslationService, TranslationService>();
 
@@ -71,5 +72,9 @@ public static class ServiceCollectionExtensions
 
         robotService?.SetRegisterCache(registerCache);
         robotService?.SetTaskStatusMonitor(taskStatusMonitor);
+
+        // Instanziiere Handshake-Services damit sie aktiv werden (subscriben auf RegisterChanged Events)
+        _ = serviceProvider.GetRequiredService<IAutostopHandshakeService>();
+        _ = serviceProvider.GetRequiredService<IPaletteHandshakeService>();
     }
 }

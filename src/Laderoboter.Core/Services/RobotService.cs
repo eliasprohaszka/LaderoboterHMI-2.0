@@ -52,6 +52,12 @@ public class RobotService : IRobotService
     private const int PALETTE_DOOR1_REGISTER_1 = 87;
     private const int PALETTE_DOOR1_REGISTER_2 = 187;
 
+    // Handshake registers for workpiece status changes
+    private const int R149_MOD_PAL_STATES = 149;      // Start modification signal
+    private const int R148_MODED_PAL_STATES = 148;    // Modification complete signal
+    private const int R48_COPIED_PAL_STATES = 48;     // Robot has copied data signal
+    private const int HANDSHAKE_TIMEOUT_MS = 30000;   // 30 seconds timeout for handshake
+
     public RobotService(ISettingsService settings, IErrorLogService errorLog, IRobotRequestQueue requestQueue)
     {
         _errorLog = errorLog;
@@ -471,6 +477,96 @@ public class RobotService : IRobotService
                 return false;
             }
         });
+    }
+
+    /// <summary>
+    /// Writes a workpiece register (R150-R165) with the handshake protocol.
+    /// When MAIN program is running: Uses R149/R148/R48 handshake to signal robot.
+    /// When MAIN program is NOT running: Writes directly to R150-R165 and sets R148=1.
+    /// </summary>
+    public async Task<bool> WriteWorkpieceRegisterWithHandshakeAsync(int workpiecePosition, int value)
+    {
+        if (_robot == null || !IsConnected) return false;
+        if (workpiecePosition < 1 || workpiecePosition > 16) return false;
+
+        // Calculate register address: Position 1 -> R150, Position 16 -> R165
+        int registerAddress = PALETTE_IDLE_START + (workpiecePosition - 1);
+
+        try
+        {
+            bool isMainRunning = Status.IsMainProgramRunning;
+
+            if (!isMainRunning)
+            {
+                // MAIN program not running - write directly and signal R148
+                var writeSuccess = await WriteRegisterAsync(registerAddress, value);
+                if (!writeSuccess) return false;
+
+                // Signal that data has been modified (R148 = 1)
+                await WriteRegisterAsync(R148_MODED_PAL_STATES, 1);
+                return true;
+            }
+
+            // MAIN program is running - use full handshake protocol
+
+            // Step 1: Set R149 = 1 (signal start of modification)
+            if (!await WriteRegisterAsync(R149_MOD_PAL_STATES, 1))
+            {
+                await _errorLog.LogAsync("Handshake failed: Could not set R149=1", ErrorSeverity.Warning, ErrorSource.Robot);
+                return false;
+            }
+
+            // Step 2: Write the actual register value (R150-R165)
+            if (!await WriteRegisterAsync(registerAddress, value))
+            {
+                await WriteRegisterAsync(R149_MOD_PAL_STATES, 0); // Cleanup
+                await _errorLog.LogAsync($"Handshake failed: Could not write R[{registerAddress}]", ErrorSeverity.Warning, ErrorSource.Robot);
+                return false;
+            }
+
+            // Step 3: Set R148 = 1 and R149 = 0 (signal modification complete)
+            if (!await WriteRegisterAsync(R148_MODED_PAL_STATES, 1))
+            {
+                await WriteRegisterAsync(R149_MOD_PAL_STATES, 0); // Cleanup
+                return false;
+            }
+            await WriteRegisterAsync(R149_MOD_PAL_STATES, 0);
+
+            // Step 4: Monitor R48 until it becomes >= 1 (robot has copied the data)
+            var startTime = DateTime.UtcNow;
+            while (DateTime.UtcNow - startTime < TimeSpan.FromMilliseconds(HANDSHAKE_TIMEOUT_MS))
+            {
+                var r48Value = await ReadRegisterAsync(R48_COPIED_PAL_STATES);
+                if (r48Value.HasValue && r48Value.Value >= 1)
+                {
+                    // Step 5: Reset R148 = 0 (acknowledge robot's confirmation)
+                    await WriteRegisterAsync(R148_MODED_PAL_STATES, 0);
+                    return true;
+                }
+
+                await Task.Delay(200); // Wait 200ms before next check
+            }
+
+            // Timeout - reset R148 and return failure
+            await WriteRegisterAsync(R148_MODED_PAL_STATES, 0);
+            await _errorLog.LogAsync($"Handshake timeout: Robot did not acknowledge write to R[{registerAddress}] within {HANDSHAKE_TIMEOUT_MS}ms",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            // Cleanup on error
+            try
+            {
+                await WriteRegisterAsync(R148_MODED_PAL_STATES, 0);
+                await WriteRegisterAsync(R149_MOD_PAL_STATES, 0);
+            }
+            catch { /* Ignore cleanup errors */ }
+
+            await _errorLog.LogAsync($"Handshake protocol failed for R[{registerAddress}]: {ex.Message}",
+                ErrorSeverity.Warning, ErrorSource.Robot);
+            return false;
+        }
     }
 
     public Task<bool?> ReadDigitalInputAsync(int address)
