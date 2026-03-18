@@ -385,9 +385,6 @@ public static class TranslationSeeder
         Add("error.setChangeRegister", "Fehler beim Setzen des CHANGE_PAL_{0} Registers", "Error setting CHANGE_PAL_{0} register", "error");
         Add("error.doorTimeout", "Timeout: DOOR_PAL_{0}_UNLOD wurde nicht innerhalb von {1}ms freigegeben", "Timeout: DOOR_PAL_{0}_UNLOD was not released within {1}ms", "error");
 
-        // === Footer ===
-        Add("footer.copyright", "© 2025 Geibel & Hotz GmbH", "© 2025 Geibel & Hotz GmbH", "footer");
-
         // === Slide to Delete ===
         Add("common.slideToDelete", "Zum Löschen schieben", "Slide to delete", "common");
         Add("common.confirmed", "Bestätigt", "Confirmed", "common");

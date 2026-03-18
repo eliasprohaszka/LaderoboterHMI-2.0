@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 
@@ -11,6 +12,31 @@ public class SystemService : ISystemService
     public SystemService(ILogger<SystemService> logger)
     {
         _logger = logger;
+    }
+
+    public string ApplicationVersion
+    {
+        get
+        {
+            var assembly = Assembly.GetEntryAssembly();
+            var version = assembly?.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion
+                          ?? assembly?.GetName().Version?.ToString()
+                          ?? "0.0.0";
+
+            // Remove build metadata (e.g., "+abc123") if present
+            var plusIndex = version.IndexOf('+');
+            return plusIndex > 0 ? version[..plusIndex] : version;
+        }
+    }
+
+    public string ApplicationCopyright
+    {
+        get
+        {
+            var assembly = Assembly.GetEntryAssembly();
+            return assembly?.GetCustomAttribute<AssemblyCopyrightAttribute>()?.Copyright
+                   ?? string.Empty;
+        }
     }
 
     public async Task<bool> ShutdownAsync(int delaySeconds = 15)

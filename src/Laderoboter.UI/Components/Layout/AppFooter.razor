@@ -1,16 +1,16 @@
-@inject ITranslationService T
+@inject ISystemService SystemService
 
 <footer class="bg-gray-800 text-white py-3 px-6">
     <div class="max-w-7xl mx-auto">
         <div class="flex justify-between items-center">
             <!-- Company Info -->
             <div>
-                <p class="text-sm">@T.Translate("footer.copyright")</p>
+                <p class="text-sm">@SystemService.ApplicationCopyright</p>
             </div>
 
             <!-- Version -->
             <div>
-                <p class="text-xs text-gray-400">@T.Translate("common.version") 1.0.0</p>
+                <p class="text-xs text-gray-400">Version @SystemService.ApplicationVersion</p>
             </div>
         </div>
     </div>
