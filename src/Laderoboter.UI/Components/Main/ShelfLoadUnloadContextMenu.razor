@@ -1,5 +1,8 @@
 @using Laderoboter.Core.Models
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject ITranslationService T
+@inject IUserActionLogService ActionLog
 
 @if (IsVisible)
 {
@@ -54,11 +57,13 @@
 
     private async Task OnLoadClick()
     {
+        await ActionLog.LogActionAsync(UserActions.ShelfLoad, "Regal Be-/Entladestation: Beladen");
         await OnLoadSelected.InvokeAsync();
     }
 
     private async Task OnUnloadClick()
     {
+        await ActionLog.LogActionAsync(UserActions.ShelfUnload, "Regal Be-/Entladestation: Entladen");
         await OnUnloadSelected.InvokeAsync();
     }
 

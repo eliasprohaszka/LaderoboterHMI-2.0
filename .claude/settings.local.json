@@ -18,7 +18,8 @@
       "Bash(cmd /c:*)",
       "Bash(xcopy:*)",
       "Skill(frontend-design)",
-      "Skill(frontend-design:*)"
+      "Skill(frontend-design:*)",
+      "Bash(grep:*)"
     ]
   }
 }

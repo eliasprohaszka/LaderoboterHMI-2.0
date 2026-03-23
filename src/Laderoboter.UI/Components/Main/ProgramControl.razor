@@ -1,7 +1,10 @@
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject IRobotService RobotService
 @inject IAutostopHandshakeService AutostopService
 @inject ITranslationService T
 @inject IAuthorizationService Authorization
+@inject IUserActionLogService ActionLog
 @implements IDisposable
 
 @if (Authorization.IsGHAdmin())
@@ -170,11 +173,14 @@ else
         // Step 3: Run main program
         await RobotService.RunProgramAsync("main");
         // No need to set IsMainProgramRunning - TaskStatusMonitor will detect it and fire StatusChanged
+
+        await ActionLog.LogActionAsync(UserActions.ProgramStarted, "Programm: main (Autostart)");
     }
 
     private async Task AutostopProgram()
     {
         await AutostopService.StartAutostopAsync();
+        await ActionLog.LogActionAsync(UserActions.AutostopStarted, null);
     }
 
     private async Task PauseCurrentProgram()
@@ -182,10 +188,12 @@ else
         if (!IsProgramPaused)
         {
             await RobotService.PauseProgramAsync();
+            await ActionLog.LogActionAsync(UserActions.ProgramPaused, null);
         }
         else
         {
             await RobotService.ResumeProgramAsync();
+            await ActionLog.LogActionAsync(UserActions.ProgramResumed, null);
         }
         // No need to set IsProgramPaused - TaskStatusMonitor will detect it and fire StatusChanged
     }
@@ -199,6 +207,8 @@ else
         }
         await RobotService.StopProgramAsync();
         // No need to set IsMainProgramRunning/IsProgramPaused - TaskStatusMonitor will detect it
+
+        await ActionLog.LogActionAsync(UserActions.ProgramStopped, null);
     }
 
     private async Task ResetSystem()
@@ -210,6 +220,8 @@ else
         }
         await RobotService.ResetAsync();
         // No need to set IsMainProgramRunning/IsProgramPaused - TaskStatusMonitor will detect it
+
+        await ActionLog.LogActionAsync(UserActions.SystemReset, null);
     }
 
     public void Dispose()

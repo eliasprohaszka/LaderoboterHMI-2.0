@@ -115,4 +115,82 @@ public class UserActionLogService : IUserActionLogService
             .OrderByDescending(l => l.Timestamp)
             .ToListAsync();
     }
+
+    public async Task<IEnumerable<UserActionLog>> GetLogsAsync(
+        string? personalNumber = null,
+        string? action = null,
+        DateTime? from = null,
+        DateTime? to = null,
+        TimeSpan? timeFrom = null,
+        TimeSpan? timeTo = null)
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var query = context.UserActionLogs
+            .Include(l => l.User)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(personalNumber))
+        {
+            query = query.Where(l => l.PersonalNumber == personalNumber);
+        }
+
+        if (!string.IsNullOrWhiteSpace(action))
+        {
+            query = query.Where(l => l.Action == action);
+        }
+
+        if (from.HasValue)
+        {
+            query = query.Where(l => l.Timestamp >= from.Value);
+        }
+
+        if (to.HasValue)
+        {
+            query = query.Where(l => l.Timestamp <= to.Value);
+        }
+
+        var results = await query
+            .OrderByDescending(l => l.Timestamp)
+            .ToListAsync();
+
+        // Filter by time of day (done in memory since SQLite doesn't support TimeOfDay)
+        if (timeFrom.HasValue || timeTo.HasValue)
+        {
+            results = results.Where(l =>
+            {
+                var timeOfDay = l.Timestamp.ToLocalTime().TimeOfDay;
+                if (timeFrom.HasValue && timeOfDay < timeFrom.Value)
+                    return false;
+                if (timeTo.HasValue && timeOfDay > timeTo.Value)
+                    return false;
+                return true;
+            }).ToList();
+        }
+
+        return results;
+    }
+
+    public async Task<IEnumerable<string>> GetDistinctActionsAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        return await context.UserActionLogs
+            .Select(l => l.Action)
+            .Distinct()
+            .OrderBy(a => a)
+            .ToListAsync();
+    }
+
+    public async Task<IEnumerable<string>> GetDistinctPersonalNumbersAsync()
+    {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        return await context.UserActionLogs
+            .Where(l => l.PersonalNumber != null)
+            .Select(l => l.PersonalNumber!)
+            .Distinct()
+            .OrderBy(p => p)
+            .ToListAsync();
+    }
 }

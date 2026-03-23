@@ -1,6 +1,9 @@
 @page "/translations"
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject ITranslationService T
 @inject IAuthorizationService Authorization
+@inject IUserActionLogService ActionLog
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IDisposable
@@ -401,8 +404,13 @@ else
 
     private async Task ToggleLanguageActive(Language lang)
     {
-        await T.UpdateLanguageAsync(lang.Id, lang.Name, lang.NativeName, !lang.IsActive, lang.SortOrder);
+        var newActive = !lang.IsActive;
+        await T.UpdateLanguageAsync(lang.Id, lang.Name, lang.NativeName, newActive, lang.SortOrder);
         await LoadLanguages();
+
+        // Log language update
+        await ActionLog.LogActionAsync(UserActions.LanguageUpdated,
+            $"{lang.Code}: {(newActive ? "aktiviert" : "deaktiviert")}");
     }
 
     private async Task MoveLanguageUp(Language lang)
@@ -449,7 +457,15 @@ else
     {
         if (languageToDelete != null)
         {
+            var langCode = languageToDelete.Code;
+            var langName = languageToDelete.NativeName;
+
             await T.DeleteLanguageAsync(languageToDelete.Id);
+
+            // Log language deleted
+            await ActionLog.LogActionAsync(UserActions.LanguageDeleted,
+                $"{langCode} ({langName})");
+
             await LoadLanguages();
             await LoadTranslations();
         }
@@ -470,6 +486,11 @@ else
     private async Task OnAddLanguageConfirmed((string Code, string Name, string NativeName) data)
     {
         await T.AddLanguageAsync(data.Code, data.Name, data.NativeName);
+
+        // Log language added
+        await ActionLog.LogActionAsync(UserActions.LanguageAdded,
+            $"{data.Code} ({data.NativeName})");
+
         await LoadLanguages();
         showAddLanguage = false;
     }
@@ -491,6 +512,10 @@ else
         if (editingTranslationId.HasValue)
         {
             await T.UpdateTranslationAsync(editingTranslationId.Value, editingValue);
+
+            // Log translation updated
+            await ActionLog.LogActionAsync(UserActions.TranslationUpdated, null);
+
             editingTranslationId = null;
             editingValue = "";
             await LoadTranslations();
@@ -529,6 +554,12 @@ else
         {
             var category = addingTranslationKey.Split('.').FirstOrDefault();
             await T.AddTranslationAsync(addingLanguageId.Value, addingTranslationKey, addingValue, category);
+
+            // Log translation added
+            var lang = languages.FirstOrDefault(l => l.Id == addingLanguageId.Value);
+            await ActionLog.LogActionAsync(UserActions.TranslationAdded,
+                $"Key: {addingTranslationKey}, Sprache: {lang?.Code ?? "?"}");
+
             addingTranslationKey = null;
             addingLanguageId = null;
             addingValue = "";
@@ -576,6 +607,9 @@ else
 
             await JS.InvokeVoidAsync("downloadFile", fileName, json, "application/json");
 
+            // Log translations exported
+            await ActionLog.LogActionAsync(UserActions.TranslationsExported, fileName);
+
             ShowInfo(T.Translate("translations.export.success"), T.Translate("translations.export.successMessage"));
         }
         catch (Exception ex)
@@ -599,6 +633,11 @@ else
         try
         {
             await T.ImportTranslationsAsync(data.Json, data.Overwrite);
+
+            // Log translations imported
+            await ActionLog.LogActionAsync(UserActions.TranslationsImported,
+                $"Überschreiben: {(data.Overwrite ? "Ja" : "Nein")}");
+
             await LoadLanguages();
             await LoadCategories();
             await LoadTranslations();

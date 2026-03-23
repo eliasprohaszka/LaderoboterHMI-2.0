@@ -1,5 +1,8 @@
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject IRobotService RobotService
 @inject ITranslationService T
+@inject IUserActionLogService ActionLog
 
 @if (IsVisible)
 {
@@ -68,6 +71,7 @@
 
     private async Task OnJustNavigate()
     {
+        await ActionLog.LogActionAsync(UserActions.MaintenancePageExited, "Action: Navigate only");
         await OnNavigate.InvokeAsync();
     }
 
@@ -80,6 +84,8 @@
         try
         {
             await LockAllWorkpieces();
+            await ActionLog.LogActionAsync(UserActions.MaintenancePageExited,
+                "Action: Lock all (16 positions → Locked)");
             await OnNavigate.InvokeAsync();
         }
         finally
@@ -99,6 +105,8 @@
         try
         {
             await ResetAllWorkpieces();
+            await ActionLog.LogActionAsync(UserActions.MaintenancePageExited,
+                "Action: Reset all (16 positions → Unprocessed)");
             await OnNavigate.InvokeAsync();
         }
         finally

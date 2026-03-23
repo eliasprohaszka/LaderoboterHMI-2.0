@@ -1,7 +1,10 @@
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject IUserService UserService
 @inject INfcService NfcService
 @inject ITranslationService T
 @inject IAuthorizationService Authorization
+@inject IUserActionLogService ActionLog
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -373,6 +376,10 @@
                 // Create new user
                 var rfidTag = _formRfidTag != "[assigned]" ? _formRfidTag : null;
                 await UserService.CreateUserAsync(_formPersonalNumber, _formPassword, _formRole, _formName, rfidTag);
+
+                // Log user created
+                await ActionLog.LogActionAsync(UserActions.UserCreated,
+                    $"Personalnummer: {_formPersonalNumber}, Rolle: {_formRole}");
             }
             else
             {
@@ -398,6 +405,10 @@
                     _formName != _editingUser.Name ? _formName : null,
                     rfidTag,
                     _formIsActive != _editingUser.IsActive ? _formIsActive : null);
+
+                // Log user updated
+                await ActionLog.LogActionAsync(UserActions.UserUpdated,
+                    $"Personalnummer: {_editingUser.PersonalNumber}");
             }
 
             await LoadUsers();
@@ -430,7 +441,14 @@
         if (_deletingUser == null)
             return;
 
+        var personalNumber = _deletingUser.PersonalNumber;
+
         await UserService.DeleteUserAsync(_deletingUser.Id);
+
+        // Log user deleted
+        await ActionLog.LogActionAsync(UserActions.UserDeleted,
+            $"Personalnummer: {personalNumber}");
+
         await LoadUsers();
         CloseDeleteDialog();
     }
@@ -502,6 +520,10 @@
 
             await JS.InvokeVoidAsync("downloadFile", fileName, json, "application/json");
 
+            // Log users exported
+            await ActionLog.LogActionAsync(UserActions.UsersExported,
+                $"Datei: {fileName}, Benutzer: {_users.Count}");
+
             ShowInfo(T.Translate("users.export.success"), T.Translate("users.export.successMessage"));
         }
         catch (Exception ex)
@@ -553,6 +575,10 @@
             var result = await UserService.ImportFromJsonAsync(_pendingImportJson);
 
             await LoadUsers();
+
+            // Log users imported
+            await ActionLog.LogActionAsync(UserActions.UsersImported,
+                $"Importiert: {result.ImportedCount}, Aktualisiert: {result.UpdatedCount}, Übersprungen: {result.SkippedCount}");
 
             var message = string.Format(T.Translate("users.import.successMessage"), result.ImportedCount, result.UpdatedCount);
 

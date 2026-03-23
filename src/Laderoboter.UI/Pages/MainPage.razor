@@ -1,11 +1,14 @@
 @page "/"
 @using Laderoboter.Core.Services
 @using Laderoboter.Core.Models
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @using static Laderoboter.UI.Components.Main.PaletteCard
 @inject IRobotService RobotService
 @inject IRobotMonitor RobotMonitor
 @inject ISettingsService Settings
 @inject ITranslationService T
+@inject IUserActionLogService ActionLog
 @implements IDisposable
 
 <div class="main-page-container">
@@ -344,6 +347,10 @@
             }
             await Settings.SetAsync("robot.connection.autoConnect", autoConnect);
 
+            // Log connection
+            await ActionLog.LogActionAsync(UserActions.RobotConnected,
+                isOfflineMode ? $"RoboGuide: {roboGuidePath}" : $"IP: {ipAddress}");
+
             // Start monitoring - der RobotMonitor reagiert auf RegisterCache Events
             // und wird die Palette-Daten automatisch laden sobald der Cache gefüllt ist
             RobotMonitor.Start();
@@ -394,6 +401,11 @@
     {
         showChangeModeConfirmDialog = false;
         isEndingChangeMode = false;
+
+        // Log mode change started
+        await ActionLog.LogActionAsync(UserActions.PaletteModeChangeStarted,
+            $"Palette {selectedPaletteForModeChange}");
+
         await StartWechselmodusWorkflow(selectedPaletteForModeChange);
     }
 
@@ -401,6 +413,11 @@
     {
         showEndChangeModeDialog = false;
         isEndingChangeMode = true;
+
+        // Log mode change ending
+        await ActionLog.LogActionAsync(UserActions.PaletteModeChangeEnded,
+            $"Palette {selectedPaletteForModeChange}");
+
         await StartEndChangeModeWorkflow(selectedPaletteForModeChange);
     }
 
@@ -491,6 +508,10 @@
             {
                 Palette2Mode = PaletteMode.Change;
             }
+
+            // Log mode change completed
+            await ActionLog.LogActionAsync(UserActions.PaletteModeChangeCompleted,
+                $"Palette {paletteId}: Wechselmodus aktiviert");
         }
         catch (Exception ex)
         {
@@ -556,6 +577,10 @@
             {
                 Palette2Mode = PaletteMode.Active;
             }
+
+            // Log mode change completed
+            await ActionLog.LogActionAsync(UserActions.PaletteModeChangeCompleted,
+                $"Palette {paletteId}: Wechselmodus beendet");
         }
         catch (Exception ex)
         {
@@ -782,6 +807,10 @@
             await RobotService.WriteRegisterAsync(148, 1);
         }
 
+        // Log palette reset
+        await ActionLog.LogActionAsync(UserActions.PaletteReset,
+            $"Palette {paletteId}: {palette.Count} Werkstücke auf Unprocessed zurückgesetzt");
+
         StateHasChanged();
     }
 
@@ -825,6 +854,10 @@
             await RobotService.WriteRegisterAsync(148, 1);
         }
 
+        // Log shelf reset
+        await ActionLog.LogActionAsync(UserActions.ShelfReset,
+            $"Regal: {ShelfWorkpieces.Count} Werkstücke auf Unprocessed zurückgesetzt");
+
         StateHasChanged();
     }
 
@@ -861,6 +894,8 @@
         var workpiece = ShelfWorkpieces.FirstOrDefault(w => w.Position == change.Position);
         if (workpiece == null) return;
 
+        var oldState = workpiece.State;
+
         // Calculate register address
         // Shelf registers: R[66-93] when program running, R[166-193] when not
         bool programRunning = RobotService.Status.IsRunning;
@@ -874,6 +909,10 @@
         if (success)
         {
             workpiece.State = change.NewState;
+
+            // Log shelf workpiece state change
+            await ActionLog.LogActionAsync(UserActions.ShelfWorkpieceStateChanged,
+                $"Regal Position {change.Position}: {oldState} → {change.NewState}");
 
             // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
             if (!RobotService.Status.IsRunning)

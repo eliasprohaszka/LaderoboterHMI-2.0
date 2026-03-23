@@ -1,11 +1,14 @@
 @page "/maintenance"
 @using Laderoboter.Core.Models
 @using Laderoboter.Core.Services
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject IRobotService RobotService
 @inject IRegisterErrorService RegisterErrorService
 @inject ISystemService SystemService
 @inject ITranslationService T
 @inject IAuthorizationService Authorization
+@inject IUserActionLogService ActionLog
 @inject NavigationManager Navigation
 @implements IDisposable
 
@@ -240,11 +243,14 @@ else
     // State
     private bool _isClearingError = false;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         RobotService.StatusChanged += OnStatusChanged;
         RegisterErrorService.ErrorChanged += OnRegisterErrorChanged;
         T.LanguageChanged += OnLanguageChanged;
+
+        // Log maintenance page entry
+        await ActionLog.LogActionAsync(UserActions.MaintenancePageEntered, null);
     }
 
     private void OnStatusChanged(object? sender, Laderoboter.Core.Events.RobotStatusChangedEventArgs e)
@@ -268,7 +274,11 @@ else
     private void ShowPickUpConfirmation() => showPickUpDialog = true;
     private void ShowShutdownConfirmation() => showShutdownDialog = true;
     private void ShowRestartConfirmation() => showRestartDialog = true;
-    private void ShowIOSignals() => showIOSignalsDialog = true;
+    private async Task ShowIOSignals()
+    {
+        await ActionLog.LogActionAsync(UserActions.IoSignalsViewed, null);
+        showIOSignalsDialog = true;
+    }
 
     // Confirm actions
     private async Task ConfirmGoToHome()
@@ -276,6 +286,7 @@ else
         showHomeDialog = false;
         await RobotService.StopProgramAsync();
         await RobotService.RunProgramAsync("go_to_home");
+        await ActionLog.LogActionAsync(UserActions.GoToHome, null);
     }
 
     private async Task ConfirmPickUp()
@@ -283,6 +294,7 @@ else
         showPickUpDialog = false;
         await RobotService.StopProgramAsync();
         await RobotService.RunProgramAsync("fs_pick_up_ui");
+        await ActionLog.LogActionAsync(UserActions.PickUp, null);
     }
 
     private async Task ConfirmLayDown(WorkpieceStatus selectedWorkpiece)
@@ -305,6 +317,15 @@ else
 
         // Then start the lay_down_ui program
         await RobotService.RunProgramAsync("lay_down_ui");
+
+        // Determine palette
+        int paletteId = selectedWorkpiece.RegisterAddress <= 157 ? 1 : 2;
+        int position = paletteId == 1
+            ? selectedWorkpiece.RegisterAddress - 150 + 1
+            : selectedWorkpiece.RegisterAddress - 158 + 1;
+
+        await ActionLog.LogActionAsync(UserActions.LayDown,
+            $"Palette {paletteId}, Position {position} (R{selectedWorkpiece.RegisterAddress})");
     }
 
     private async Task ConfirmShutdown()
@@ -317,6 +338,7 @@ else
             shutdownCountdown = 15;
             showShutdownCountdownDialog = true;
             StartCountdown("shutdown");
+            await ActionLog.LogActionAsync(UserActions.PcShutdown, "Countdown: 15s");
         }
     }
 
@@ -330,6 +352,7 @@ else
             restartCountdown = 15;
             showRestartCountdownDialog = true;
             StartCountdown("restart");
+            await ActionLog.LogActionAsync(UserActions.PcRestart, "Countdown: 15s");
         }
     }
 
@@ -371,6 +394,8 @@ else
         showRestartCountdownDialog = false;
         shutdownCountdown = 0;
         restartCountdown = 0;
+
+        await ActionLog.LogActionAsync(UserActions.PcShutdownCancelled, null);
     }
 
     // Door control - Handshake wird im Core überwacht
@@ -378,18 +403,21 @@ else
     {
         // Wartungstür: R189 → Core überwacht R89 und setzt R189 zurück
         await RobotService.StartDoorHandshakeAsync(189);
+        await ActionLog.LogActionAsync(UserActions.MaintenanceDoorToggled, null);
     }
 
     private async Task OpenLoadDoor()
     {
         await RobotService.StopProgramAsync();
         await RobotService.RunProgramAsync("open_door");
+        await ActionLog.LogActionAsync(UserActions.LoadDoorOpened, null);
     }
 
     private async Task CloseLoadDoor()
     {
         await RobotService.StopProgramAsync();
         await RobotService.RunProgramAsync("close_door");
+        await ActionLog.LogActionAsync(UserActions.LoadDoorClosed, null);
     }
 
     private async Task TogglePaletteDoor(int number)
@@ -397,17 +425,20 @@ else
         int requestRegister = number == 1 ? 187 : 188;
         // Palettentür: R187/R188 → Core überwacht R87/R88 und setzt zurück
         await RobotService.StartDoorHandshakeAsync(requestRegister);
+        await ActionLog.LogActionAsync(UserActions.PaletteDoorToggled, $"Palette {number}");
     }
 
     // Robot control
     private async Task PerformReset()
     {
         await RobotService.ResetAsync();
+        await ActionLog.LogActionAsync(UserActions.SystemReset, "Maintenance");
     }
 
     private async Task EmergencyStop()
     {
         await RobotService.StopProgramAsync();
+        await ActionLog.LogActionAsync(UserActions.ProgramStopped, "Maintenance");
     }
 
     private async Task ClearRegisterError()
@@ -415,12 +446,17 @@ else
         if (_isClearingError || !RegisterErrorService.HasActiveError)
             return;
 
+        var errorMessage = RegisterErrorService.CurrentErrorMessage;
+        var errorCode = RegisterErrorService.CurrentErrorCode;
+
         _isClearingError = true;
         StateHasChanged();
 
         try
         {
             await RegisterErrorService.ClearErrorAsync();
+            await ActionLog.LogActionAsync(UserActions.ErrorCleared,
+                $"Fehler {errorCode}: {errorMessage}");
         }
         finally
         {
@@ -451,7 +487,7 @@ else
         return null;
     }
 
-    private void NavigateBack()
+    private async Task NavigateBack()
     {
         // Zeige Exit-Dialog wenn Roboter verbunden ist
         if (RobotService.IsConnected)
@@ -460,6 +496,7 @@ else
         }
         else
         {
+            await ActionLog.LogActionAsync(UserActions.MaintenancePageExited, "Robot not connected");
             Navigation.NavigateTo("/");
         }
     }
@@ -467,6 +504,7 @@ else
     private void ConfirmExit()
     {
         showExitDialog = false;
+        // Logging wird im MaintenanceExitDialog gemacht (mit Details über gewählte Aktion)
         Navigation.NavigateTo("/");
     }
 

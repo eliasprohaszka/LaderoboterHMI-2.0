@@ -1,3 +1,5 @@
+@using Laderoboter.Core.Interfaces
+@using Laderoboter.Core.Models
 @inject IUserActionLogService ActionLogService
 @inject ITranslationService T
 @implements IDisposable
@@ -8,17 +10,75 @@
             <Blazicon Svg="Lucide.History" class="w-5 h-5 text-primary" />
             <h3 class="font-semibold text-lg">@T.Translate("actionLog.title")</h3>
         </div>
-        <div class="flex items-center space-x-2">
+    </div>
+
+    <!-- Filter Row -->
+    <div class="flex flex-wrap items-end gap-3 mb-4 p-4 bg-white/30 rounded-lg">
+        <!-- Date Filter -->
+        <div class="flex flex-col">
+            <label class="text-xs text-gray-600 mb-1">@T.Translate("actionLog.dateFrom")</label>
             <input type="date"
-                   class="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                   class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
                    @bind="_fromDate" />
-            <span class="text-gray-500">-</span>
+        </div>
+        <div class="flex flex-col">
+            <label class="text-xs text-gray-600 mb-1">@T.Translate("actionLog.dateTo")</label>
             <input type="date"
-                   class="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+                   class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
                    @bind="_toDate" />
-            <button class="px-3 py-1 bg-primary text-white rounded-lg text-sm"
+        </div>
+
+        <!-- Time Filter -->
+        <div class="flex flex-col">
+            <label class="text-xs text-gray-600 mb-1">@T.Translate("actionLog.timeFrom")</label>
+            <input type="time"
+                   class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                   @bind="_timeFrom" />
+        </div>
+        <div class="flex flex-col">
+            <label class="text-xs text-gray-600 mb-1">@T.Translate("actionLog.timeTo")</label>
+            <input type="time"
+                   class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary"
+                   @bind="_timeTo" />
+        </div>
+
+        <!-- Action Filter -->
+        <div class="flex flex-col">
+            <label class="text-xs text-gray-600 mb-1">@T.Translate("actionLog.action")</label>
+            <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary min-w-[160px]"
+                    @bind="_selectedAction">
+                <option value="">@T.Translate("actionLog.allActions")</option>
+                @foreach (var action in _availableActions)
+                {
+                    <option value="@action">@action</option>
+                }
+            </select>
+        </div>
+
+        <!-- User Filter -->
+        <div class="flex flex-col">
+            <label class="text-xs text-gray-600 mb-1">@T.Translate("actionLog.user")</label>
+            <select class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-primary min-w-[140px]"
+                    @bind="_selectedUser">
+                <option value="">@T.Translate("actionLog.allUsers")</option>
+                @foreach (var user in _availableUsers)
+                {
+                    <option value="@user">@user</option>
+                }
+            </select>
+        </div>
+
+        <!-- Buttons -->
+        <div class="flex gap-2">
+            <button class="flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors"
                     @onclick="LoadLogs">
                 <Blazicon Svg="Lucide.Search" class="w-4 h-4" />
+                <span>@T.Translate("actionLog.search")</span>
+            </button>
+            <button class="flex items-center gap-2 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                    @onclick="ResetFilters">
+                <Blazicon Svg="Lucide.RotateCcw" class="w-4 h-4" />
+                <span>@T.Translate("actionLog.reset")</span>
             </button>
         </div>
     </div>
@@ -80,12 +140,21 @@
     private List<UserActionLog> _logs = new();
     private DateTime? _fromDate;
     private DateTime? _toDate;
+    private TimeOnly? _timeFrom;
+    private TimeOnly? _timeTo;
+    private string _selectedAction = "";
+    private string _selectedUser = "";
+    private List<string> _availableActions = new();
+    private List<string> _availableUsers = new();
 
     protected override async Task OnInitializedAsync()
     {
         _fromDate = DateTime.Today.AddDays(-7);
         _toDate = DateTime.Today;
+
+        await LoadFilterOptions();
         await LoadLogs();
+
         T.LanguageChanged += OnLanguageChanged;
     }
 
@@ -94,21 +163,59 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private async Task LoadFilterOptions()
+    {
+        _availableActions = (await ActionLogService.GetDistinctActionsAsync()).ToList();
+        _availableUsers = (await ActionLogService.GetDistinctPersonalNumbersAsync()).ToList();
+    }
+
     private async Task LoadLogs()
     {
         var from = _fromDate?.Date;
         var to = _toDate?.Date.AddDays(1).AddSeconds(-1); // End of day
 
-        _logs = (await ActionLogService.GetLogsAsync(null, from, to)).ToList();
+        TimeSpan? timeFrom = _timeFrom.HasValue ? _timeFrom.Value.ToTimeSpan() : null;
+        TimeSpan? timeTo = _timeTo.HasValue ? _timeTo.Value.ToTimeSpan() : null;
+
+        _logs = (await ActionLogService.GetLogsAsync(
+            personalNumber: string.IsNullOrEmpty(_selectedUser) ? null : _selectedUser,
+            action: string.IsNullOrEmpty(_selectedAction) ? null : _selectedAction,
+            from: from,
+            to: to,
+            timeFrom: timeFrom,
+            timeTo: timeTo
+        )).ToList();
+
+        // Refresh filter options to include any new entries
+        await LoadFilterOptions();
+    }
+
+    private async Task ResetFilters()
+    {
+        _fromDate = DateTime.Today.AddDays(-7);
+        _toDate = DateTime.Today;
+        _timeFrom = null;
+        _timeTo = null;
+        _selectedAction = "";
+        _selectedUser = "";
+        await LoadLogs();
     }
 
     private string GetActionBadgeClass(string action) => action switch
     {
         "Login" => "bg-green-100 text-green-700",
         "Logout" => "bg-gray-100 text-gray-700",
-        "Benutzer angelegt" => "bg-blue-100 text-blue-700",
-        "Benutzer bearbeitet" => "bg-yellow-100 text-yellow-700",
-        "Benutzer gelöscht" => "bg-red-100 text-red-700",
+        "UserCreated" => "bg-blue-100 text-blue-700",
+        "UserUpdated" => "bg-yellow-100 text-yellow-700",
+        "UserDeleted" => "bg-red-100 text-red-700",
+        "WorkpieceStateChanged" or "ShelfWorkpieceStateChanged" => "bg-purple-100 text-purple-700",
+        "PaletteReset" or "ShelfReset" => "bg-orange-100 text-orange-700",
+        "ErrorCleared" => "bg-red-100 text-red-700",
+        "ProgramStarted" or "ProgramResumed" => "bg-green-100 text-green-700",
+        "ProgramStopped" or "ProgramPaused" => "bg-yellow-100 text-yellow-700",
+        "RobotConnected" => "bg-green-100 text-green-700",
+        "RobotDisconnected" => "bg-red-100 text-red-700",
+        "MaintenancePageEntered" or "MaintenancePageExited" => "bg-blue-100 text-blue-700",
         _ => "bg-gray-100 text-gray-700"
     };
 

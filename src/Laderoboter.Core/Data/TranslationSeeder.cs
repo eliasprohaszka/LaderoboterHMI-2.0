@@ -496,12 +496,19 @@ public static class TranslationSeeder
         Add("actionLog.details", "Details", "Details", "actionLog");
         Add("actionLog.timestamp", "Zeitstempel", "Timestamp", "actionLog");
         Add("actionLog.noLogs", "Keine Einträge gefunden", "No entries found", "actionLog");
+        Add("actionLog.noEntries", "Keine Einträge gefunden", "No entries found", "actionLog");
         Add("actionLog.filterByUser", "Nach Benutzer filtern", "Filter by user", "actionLog");
         Add("actionLog.filterByAction", "Nach Aktion filtern", "Filter by action", "actionLog");
         Add("actionLog.allUsers", "Alle Benutzer", "All Users", "actionLog");
         Add("actionLog.allActions", "Alle Aktionen", "All Actions", "actionLog");
         Add("actionLog.systemAction", "Systemaktion", "System Action", "actionLog");
         Add("actionLog.entriesCount", "{0} Einträge", "{0} entries", "actionLog");
+        Add("actionLog.dateFrom", "Datum von", "Date from", "actionLog");
+        Add("actionLog.dateTo", "Datum bis", "Date to", "actionLog");
+        Add("actionLog.timeFrom", "Uhrzeit von", "Time from", "actionLog");
+        Add("actionLog.timeTo", "Uhrzeit bis", "Time to", "actionLog");
+        Add("actionLog.search", "Suchen", "Search", "actionLog");
+        Add("actionLog.reset", "Zurücksetzen", "Reset", "actionLog");
 
         // === Errors ===
         Add("errors.000", "Kein Fehler", "No Error", "errors");

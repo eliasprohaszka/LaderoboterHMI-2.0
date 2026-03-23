@@ -1,8 +1,11 @@
 @page "/settings"
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject ISettingsService Settings
 @inject IRobotService RobotService
 @inject ITranslationService T
 @inject IAuthorizationService Authorization
+@inject IUserActionLogService ActionLog
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IDisposable
@@ -247,6 +250,8 @@ else
 
     private async Task SaveAllSettings()
     {
+        var oldLanguage = T.CurrentLanguage;
+
         // Save robot settings
         await Settings.SetAsync("robot.connection.ip", robotIp);
         await Settings.SetAsync("robot.roboguide_path", roboGuidePath);
@@ -255,6 +260,16 @@ else
 
         // Save UI settings
         await T.SetLanguageAsync(selectedLanguage);
+
+        // Log language change if changed
+        if (oldLanguage != selectedLanguage)
+        {
+            await ActionLog.LogActionAsync(UserActions.LanguageChanged,
+                $"{oldLanguage} → {selectedLanguage}");
+        }
+
+        // Log settings changed
+        await ActionLog.LogActionAsync(UserActions.SettingsChanged, null);
     }
 
     private async Task ResetAllSettings()
@@ -272,11 +287,17 @@ else
         if (RobotService.IsConnected)
         {
             await RobotService.DisconnectAsync();
+            await ActionLog.LogActionAsync(UserActions.RobotDisconnected, null);
         }
         else
         {
             var connectionString = offlineMode ? roboGuidePath : robotIp;
-            await RobotService.ConnectAsync(connectionString);
+            var success = await RobotService.ConnectAsync(connectionString);
+            if (success)
+            {
+                await ActionLog.LogActionAsync(UserActions.RobotConnected,
+                    offlineMode ? $"RoboGuide: {roboGuidePath}" : $"IP: {robotIp}");
+            }
         }
     }
 
@@ -289,6 +310,8 @@ else
 
             // Download the file using JS interop
             await JS.InvokeVoidAsync("downloadFile", fileName, json, "application/json");
+
+            await ActionLog.LogActionAsync(UserActions.SettingsExported, fileName);
 
             ShowInfo(T.Translate("settings.export.success"), T.Translate("settings.export.successMessage"));
         }
@@ -345,6 +368,10 @@ else
 
             // Reload settings in UI
             await ResetAllSettings();
+
+            // Log import
+            await ActionLog.LogActionAsync(UserActions.SettingsImported,
+                $"Importiert: {result.ImportedCount}, Übersprungen: {result.SkippedCount}");
 
             // Build result message
             var message = string.Format(T.Translate("settings.import.successMessage"), result.ImportedCount);

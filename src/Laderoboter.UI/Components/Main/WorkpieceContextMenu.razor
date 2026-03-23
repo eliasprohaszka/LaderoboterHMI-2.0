@@ -1,7 +1,10 @@
 @using Laderoboter.Core.Models
 @using Laderoboter.Core.Services
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
 @inject IRobotService RobotService
 @inject ITranslationService T
+@inject IUserActionLogService ActionLog
 
 @if (IsVisible)
 {
@@ -91,6 +94,8 @@
     {
         if (Workpiece == null) return;
 
+        var oldState = Workpiece.State;
+
         // Workpiece.Position ist 1-16 (1-8 = Palette 1, 9-16 = Palette 2)
         // WriteWorkpieceRegisterWithHandshakeAsync kümmert sich um:
         // - Register-Adresse (R150-R165)
@@ -104,6 +109,10 @@
             // Update local state
             Workpiece.State = newState;
             await OnStatusChanged.InvokeAsync(Workpiece);
+
+            // Log action
+            await ActionLog.LogActionAsync(UserActions.WorkpieceStateChanged,
+                $"{WorkpieceId}: {oldState} → {newState}");
         }
 
         await Close();
