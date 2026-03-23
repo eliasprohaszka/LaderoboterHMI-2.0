@@ -3,52 +3,42 @@
 
 @if (IsVisible)
 {
-    <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black/20 z-50" @onclick="Close" @onclick:stopPropagation="true">
-        <!-- Menu -->
-        <div class="absolute bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden min-w-[240px]"
-             style="left: 50%; top: 50%; transform: translate(-50%, -50%);"
-             @onclick:stopPropagation="true">
-
+    <div class="menu-overlay" @onclick="Close" @onclick:stopPropagation="true">
+        <div class="menu" @onclick:stopPropagation="true">
             <!-- Header -->
-            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                <div class="font-semibold text-gray-800 text-sm">R5-1</div>
-                <div class="text-xs text-gray-500 mt-1">
-                    Be-/Entladestation
-                </div>
+            <div class="menu-header">
+                <div class="menu-title">R5-1</div>
+                <div class="menu-subtitle">Be-/Entladestation</div>
             </div>
 
             <!-- Actions -->
-            <div class="py-2">
+            <div class="menu-actions">
                 <!-- Load (Beladen) -->
-                <button class="w-full px-4 py-3 text-left hover:bg-blue-50 active:bg-blue-100 transition-colors flex items-center gap-3"
-                        @onclick="OnLoadClick">
-                    <div class="w-10 h-10 rounded-lg bg-[#004F7C]/10 flex items-center justify-center">
+                <button class="action-button" @onclick="OnLoadClick">
+                    <div class="action-icon load">
                         <Blazicon Svg="Lucide.ArrowDownToLine" class="w-5 h-5 text-[#004F7C]" />
                     </div>
-                    <div>
-                        <div class="font-medium text-gray-800 text-sm">Beladen</div>
-                        <div class="text-xs text-gray-500">Werkstück ins Regal laden</div>
+                    <div class="action-text">
+                        <div class="title">Beladen</div>
+                        <div class="description">Werkstück ins Regal laden</div>
                     </div>
                 </button>
 
                 <!-- Unload (Entladen) -->
-                <button class="w-full px-4 py-3 text-left hover:bg-orange-50 active:bg-orange-100 transition-colors flex items-center gap-3"
-                        @onclick="OnUnloadClick">
-                    <div class="w-10 h-10 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                <button class="action-button" @onclick="OnUnloadClick">
+                    <div class="action-icon unload">
                         <Blazicon Svg="Lucide.ArrowUpFromLine" class="w-5 h-5 text-orange-600" />
                     </div>
-                    <div>
-                        <div class="font-medium text-gray-800 text-sm">Entladen</div>
-                        <div class="text-xs text-gray-500">Werkstück aus Regal entnehmen</div>
+                    <div class="action-text">
+                        <div class="title">Entladen</div>
+                        <div class="description">Werkstück aus Regal entnehmen</div>
                     </div>
                 </button>
             </div>
 
-            <!-- Cancel -->
-            <div class="border-t border-gray-100 p-2">
-                <button class="w-full px-4 py-2 text-gray-600 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 rounded-lg transition-colors"
-                        @onclick="Close">
+            <!-- Footer -->
+            <div class="menu-footer">
+                <button class="cancel-button" @onclick="Close">
                     @T.Translate("common.cancel")
                 </button>
             </div>

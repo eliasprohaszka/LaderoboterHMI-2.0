@@ -18,7 +18,7 @@
                     </div>
                     <div>
                         <h3 class="dialog-title">@(IsLoadMode ? "Werkstück beladen" : "Werkstück entladen")</h3>
-                        <p class="text-sm text-gray-500 mt-0.5">Zielposition: @TargetPositionId</p>
+                        <p class="dialog-subtitle">Zielposition: @TargetPositionId</p>
                     </div>
                 </div>
             </div>
@@ -41,7 +41,7 @@
                             </div>
                         }
                         <div class="pt-1">
-                            <p class="@(CurrentStep >= 1 ? "text-gray-800" : "text-gray-400") font-medium">
+                            <p class="@(CurrentStep >= 1 ? "step-text" : "step-text-inactive")">
                                 @(IsLoadMode
                                     ? "Öffnen Sie die Beladetür und legen Sie den Werkstückträger hinein."
                                     : "Öffnen Sie die Beladetür und entnehmen Sie den Werkstückträger.")
@@ -70,7 +70,7 @@
                             </div>
                         }
                         <div class="pt-1">
-                            <p class="@(CurrentStep >= 2 ? "text-gray-800 font-medium" : "text-gray-400")">
+                            <p class="@(CurrentStep >= 2 ? "step-text" : "step-text-inactive")">
                                 Schließen Sie die Beladetür und bestätigen Sie.
                             </p>
                         </div>
@@ -78,19 +78,17 @@
                 </div>
 
                 <!-- Current Step Indicator -->
-                <div class="p-3 rounded-lg @(CurrentStep == 1 ? "bg-blue-50 border border-blue-200" : "bg-green-50 border border-green-200")">
-                    <div class="flex items-center gap-2">
-                        @if (CurrentStep == 1)
-                        {
-                            <Blazicon Svg="Lucide.Info" class="w-4 h-4 text-blue-600" />
-                            <span class="text-sm text-blue-800">Führen Sie Schritt 1 aus und klicken Sie auf "Weiter"</span>
-                        }
-                        else
-                        {
-                            <Blazicon Svg="Lucide.CircleCheck" class="w-4 h-4 text-green-600" />
-                            <span class="text-sm text-green-800">Bestätigen Sie den Vorgang</span>
-                        }
-                    </div>
+                <div class="info-box @(CurrentStep == 1 ? "blue" : "green")">
+                    @if (CurrentStep == 1)
+                    {
+                        <Blazicon Svg="Lucide.Info" class="w-4 h-4 text-blue-700" />
+                        <span>Führen Sie Schritt 1 aus und klicken Sie auf "Weiter"</span>
+                    }
+                    else
+                    {
+                        <Blazicon Svg="Lucide.CircleCheck" class="w-4 h-4 text-green-700" />
+                        <span>Bestätigen Sie den Vorgang</span>
+                    }
                 </div>
             </div>
 

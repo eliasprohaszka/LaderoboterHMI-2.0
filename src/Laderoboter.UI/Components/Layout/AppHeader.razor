@@ -22,13 +22,13 @@
 
         <!-- Status und Zeit (Rechts) -->
         <div class="header-actions">
-            <!-- Robot Alarm Icon - Touch friendly (shows for both FANUC alarms and R80 errors) -->
+            <!-- Robot Alarm Icon - left of status indicator -->
             @if (HasAnyError)
             {
                 <button @onclick="ShowAlarmDialog"
                         class="header-error-btn @GetAlarmButtonClass()"
                         title="@T.Translate("header.showRobotError")">
-                    <Blazicon Svg="Lucide.TriangleAlert" class="w-5 h-5" />
+                    <Blazicon Svg="Lucide.TriangleAlert" class="w-4 h-4" />
                 </button>
             }
 
