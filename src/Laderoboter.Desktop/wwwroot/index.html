@@ -91,6 +91,95 @@
                 input.click();
             }
         }
+
+        // Virtual Keyboard helpers
+        window.virtualKeyboard = {
+            dotNetRef: null,
+            isEnabled: true,
+            inputCounter: 0,
+
+            // Initialize the virtual keyboard with a .NET reference
+            initialize: function(dotNetRef) {
+                this.dotNetRef = dotNetRef;
+                this.setupGlobalFocusHandler();
+            },
+
+            // Setup global focus handler for all inputs
+            setupGlobalFocusHandler: function() {
+                const self = this;
+
+                // Use capture phase to catch focus before it bubbles
+                document.addEventListener('focusin', function(e) {
+                    if (!self.isEnabled || !self.dotNetRef) return;
+
+                    const target = e.target;
+                    if (!target || target.tagName !== 'INPUT') return;
+
+                    // Check if it's a text-like input
+                    const inputType = (target.type || 'text').toLowerCase();
+                    const supportedTypes = ['text', 'number', 'email', 'password', 'search', 'tel', 'url'];
+
+                    if (!supportedTypes.includes(inputType)) return;
+
+                    // Skip inputs inside the virtual keyboard itself
+                    if (target.closest('.keyboard-container')) return;
+
+                    // Skip inputs with data-no-keyboard attribute
+                    if (target.hasAttribute('data-no-keyboard')) return;
+
+                    // Ensure the input has an ID
+                    if (!target.id) {
+                        target.id = 'vk-auto-' + (++self.inputCounter);
+                    }
+
+                    // Blur the input to prevent native keyboard
+                    target.blur();
+
+                    // Call .NET to show the keyboard
+                    self.dotNetRef.invokeMethodAsync(
+                        'OnInputFocused',
+                        target.id,
+                        target.value || '',
+                        target.placeholder || '',
+                        inputType
+                    );
+                }, true);
+            },
+
+            // Set value of an input element and trigger input event
+            setInputValue: function(inputId, value) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    input.value = value;
+                    // Trigger input event for Blazor binding
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            },
+
+            // Get input element info
+            getInputInfo: function(inputId) {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    return {
+                        value: input.value || '',
+                        placeholder: input.placeholder || '',
+                        type: input.type || 'text'
+                    };
+                }
+                return null;
+            },
+
+            // Enable/disable the virtual keyboard
+            setEnabled: function(enabled) {
+                this.isEnabled = enabled;
+            },
+
+            // Dispose
+            dispose: function() {
+                this.dotNetRef = null;
+            }
+        };
     </script>
 
     <style>

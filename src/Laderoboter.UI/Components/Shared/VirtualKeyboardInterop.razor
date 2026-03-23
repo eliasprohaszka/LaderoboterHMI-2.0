@@ -1,0 +1,38 @@
+@inject IJSRuntime JSRuntime
+@inject IVirtualKeyboardService KeyboardService
+@implements IAsyncDisposable
+
+@code {
+    private DotNetObjectReference<VirtualKeyboardInterop>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("virtualKeyboard.initialize", _dotNetRef);
+        }
+    }
+
+    [JSInvokable]
+    public void OnInputFocused(string inputId, string value, string placeholder, string inputType)
+    {
+        KeyboardService.Show(inputId, value, placeholder, inputType);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dotNetRef != null)
+        {
+            try
+            {
+                await JSRuntime.InvokeVoidAsync("virtualKeyboard.dispose");
+            }
+            catch
+            {
+                // Ignore errors during disposal
+            }
+            _dotNetRef.Dispose();
+        }
+    }
+}

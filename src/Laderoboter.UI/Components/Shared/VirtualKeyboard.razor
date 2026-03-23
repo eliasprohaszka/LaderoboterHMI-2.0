@@ -1,0 +1,448 @@
+@inject IJSRuntime JSRuntime
+@inject IVirtualKeyboardService KeyboardService
+@implements IDisposable
+
+@if (_isVisible)
+{
+    <!-- Full screen backdrop with blur -->
+    <div class="keyboard-backdrop" @onclick="Cancel"></div>
+
+    <div class="keyboard-container" @onmousedown:stopPropagation @onmousedown:preventDefault>
+        <!-- Blur background layer -->
+        <div class="keyboard-blur-layer"></div>
+
+        <!-- Fixed top border layer -->
+        <div class="border-layer"></div>
+
+        <!-- Content layer -->
+        <div class="keyboard-content @(_inputType == InputType.Number ? "keyboard-number-layout" : "")">
+            <!-- Header with Input and Buttons -->
+            <div class="keyboard-header">
+                @if (_inputType == InputType.Number)
+                {
+                    <!-- Number keyboard: vertical layout -->
+                    <div class="flex flex-col gap-3">
+                        <!-- Action buttons row -->
+                        <div class="flex items-center justify-center gap-2">
+                            <button type="button" class="keyboard-action-button" @onclick="CopyToClipboard" title="In Zwischenablage kopieren">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            </button>
+                            <button type="button" class="keyboard-action-button" @onclick="PasteFromClipboard" title="Aus Zwischenablage einfügen">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10"/><path d="m17 10 4 4-4 4"/></svg>
+                            </button>
+                            <button type="button" class="keyboard-clear-button" @onclick="ClearInput" title="Eingabe löschen">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                            </button>
+                            <button type="button" class="keyboard-close-button" @onclick="Cancel" title="Tastatur schließen">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                            </button>
+                        </div>
+
+                        <!-- Input field row -->
+                        <div class="flex items-center justify-center">
+                            <input type="text"
+                                   @ref="_previewInputRef"
+                                   value="@_inputValue"
+                                   @oninput="HandlePreviewInput"
+                                   @onkeydown="HandleInputKeydown"
+                                   class="keyboard-preview-input max-w-[300px]"
+                                   placeholder="@_placeholder" />
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <!-- Text/Email/Password keyboard: horizontal layout -->
+                    <div class="flex items-center gap-2 w-full">
+                        <input type="text"
+                               @ref="_previewInputRef"
+                               value="@(_inputType == InputType.Password ? _displayValue : _inputValue)"
+                               @oninput="HandlePreviewInput"
+                               @onkeydown="HandleInputKeydown"
+                               class="keyboard-preview-input flex-1"
+                               placeholder="@_placeholder"
+                               readonly="@(_inputType == InputType.Password)"
+                               data-no-keyboard />
+                        @if (_inputType != InputType.Password)
+                        {
+                            <button type="button" class="keyboard-action-button" @onclick="CopyToClipboard" title="In Zwischenablage kopieren">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+                            </button>
+                            <button type="button" class="keyboard-action-button" @onclick="PasteFromClipboard" title="Aus Zwischenablage einfügen">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1Z"/><path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10"/><path d="m17 10 4 4-4 4"/></svg>
+                            </button>
+                        }
+                        <button type="button" class="keyboard-clear-button" @onclick="ClearInput" title="Eingabe löschen">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                        </button>
+                        <button type="button" class="keyboard-close-button ml-auto" @onclick="Cancel" title="Tastatur schließen">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    </div>
+                }
+            </div>
+
+            <!-- Keyboard -->
+            <div class="simple-keyboard virtual-keyboard-theme">
+                @foreach (var row in GetCurrentLayout())
+                {
+                    <div class="hg-row">
+                        @foreach (var key in row)
+                        {
+                            <button type="button"
+                                    class="@GetKeyClass(key)"
+                                    @onclick="() => HandleKeyPress(key)"
+                                    @onmousedown:preventDefault>
+                                @GetKeyDisplay(key)
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Locale { get; set; } = "de";
+
+    private bool _isVisible;
+    private string _inputValue = "";
+    private string _originalValue = "";
+    private string _placeholder = "";
+    private InputType _inputType = InputType.Text;
+    private bool _shiftActive;
+    private ElementReference _previewInputRef;
+    private string? _targetInputId;
+    private string _displayValue = "";
+    private System.Timers.Timer? _maskTimer;
+    private int _lastRevealedIndex = -1;
+
+    public enum InputType { Text, Number, Email, Password }
+
+    // Keyboard layouts
+    private readonly Dictionary<string, Dictionary<InputType, string[][]>> _layouts = new()
+    {
+        ["de"] = new()
+        {
+            [InputType.Number] = new[]
+            {
+                new[] { "1", "2", "3" },
+                new[] { "4", "5", "6" },
+                new[] { "7", "8", "9" },
+                new[] { "{bksp}", "0", "{enter}" }
+            },
+            [InputType.Text] = new[]
+            {
+                new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "{bksp}" },
+                new[] { "q", "w", "e", "r", "t", "z", "u", "i", "o", "p", "ü" },
+                new[] { "a", "s", "d", "f", "g", "h", "j", "k", "l", "ö", "ä" },
+                new[] { "{shift}", "y", "x", "c", "v", "b", "n", "m", "." },
+                new[] { "{space}", "{enter}" }
+            },
+            [InputType.Email] = new[]
+            {
+                new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "{bksp}" },
+                new[] { "q", "w", "e", "r", "t", "z", "u", "i", "o", "p" },
+                new[] { "a", "s", "d", "f", "g", "h", "j", "k", "l" },
+                new[] { "y", "x", "c", "v", "b", "n", "m", "@", "." },
+                new[] { "{space}", "{enter}" }
+            }
+        },
+        ["en"] = new()
+        {
+            [InputType.Number] = new[]
+            {
+                new[] { "1", "2", "3" },
+                new[] { "4", "5", "6" },
+                new[] { "7", "8", "9" },
+                new[] { "{bksp}", "0", "{enter}" }
+            },
+            [InputType.Text] = new[]
+            {
+                new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "{bksp}" },
+                new[] { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" },
+                new[] { "a", "s", "d", "f", "g", "h", "j", "k", "l" },
+                new[] { "{shift}", "z", "x", "c", "v", "b", "n", "m", "." },
+                new[] { "{space}", "{enter}" }
+            },
+            [InputType.Email] = new[]
+            {
+                new[] { "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "{bksp}" },
+                new[] { "q", "w", "e", "r", "t", "y", "u", "i", "o", "p" },
+                new[] { "a", "s", "d", "f", "g", "h", "j", "k", "l" },
+                new[] { "z", "x", "c", "v", "b", "n", "m", "@", "." },
+                new[] { "{space}", "{enter}" }
+            }
+        }
+    };
+
+    private readonly Dictionary<string, Dictionary<InputType, string[][]>> _shiftLayouts = new()
+    {
+        ["de"] = new()
+        {
+            [InputType.Text] = new[]
+            {
+                new[] { "!", "\"", "-", "$", "%", "&", "/", "(", ")", "=", "{bksp}" },
+                new[] { "Q", "W", "E", "R", "T", "Z", "U", "I", "O", "P", "Ü" },
+                new[] { "A", "S", "D", "F", "G", "H", "J", "K", "L", "Ö", "Ä" },
+                new[] { "{shift}", "Y", "X", "C", "V", "B", "N", "M", ":" },
+                new[] { "{space}", "{enter}" }
+            }
+        },
+        ["en"] = new()
+        {
+            [InputType.Text] = new[]
+            {
+                new[] { "!", "@", "-", "$", "%", "^", "&", "*", "(", ")", "{bksp}" },
+                new[] { "Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P" },
+                new[] { "A", "S", "D", "F", "G", "H", "J", "K", "L" },
+                new[] { "{shift}", "Z", "X", "C", "V", "B", "N", "M", ":" },
+                new[] { "{space}", "{enter}" }
+            }
+        }
+    };
+
+    protected override void OnInitialized()
+    {
+        KeyboardService.KeyboardRequested += OnKeyboardRequested;
+        KeyboardService.KeyboardClosed += OnKeyboardClosed;
+    }
+
+    private void OnKeyboardRequested(object? sender, VirtualKeyboardEventArgs e)
+    {
+        _targetInputId = e.InputId;
+        _originalValue = e.InitialValue;
+        _inputValue = e.InitialValue;
+        _placeholder = string.IsNullOrEmpty(e.Placeholder) ? "Eingabe..." : e.Placeholder;
+        _inputType = e.InputType.ToLower() switch
+        {
+            "number" => InputType.Number,
+            "email" => InputType.Email,
+            "password" => InputType.Password,
+            _ => InputType.Text
+        };
+        _shiftActive = false;
+        _lastRevealedIndex = -1;
+        UpdateDisplayValue();
+        _isVisible = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnKeyboardClosed(object? sender, EventArgs e)
+    {
+        _isVisible = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _maskTimer?.Stop();
+        _maskTimer?.Dispose();
+        KeyboardService.KeyboardRequested -= OnKeyboardRequested;
+        KeyboardService.KeyboardClosed -= OnKeyboardClosed;
+    }
+
+    public bool IsVisible => _isVisible;
+
+    private string[][] GetCurrentLayout()
+    {
+        var locale = _layouts.ContainsKey(Locale) ? Locale : "de";
+        var effectiveType = _inputType == InputType.Password ? InputType.Text : _inputType;
+
+        if (_shiftActive && (effectiveType == InputType.Text) && _shiftLayouts.ContainsKey(locale))
+        {
+            return _shiftLayouts[locale][InputType.Text];
+        }
+
+        return _layouts[locale][effectiveType];
+    }
+
+    private string GetKeyClass(string key)
+    {
+        var baseClass = "hg-button";
+
+        return key switch
+        {
+            "{bksp}" => $"{baseClass} hg-functionBtn hg-red",
+            "{enter}" => $"{baseClass} hg-functionBtn hg-highlight hg-button-enter",
+            "{shift}" => $"{baseClass} hg-functionBtn" + (_shiftActive ? " hg-activeButton" : ""),
+            "{space}" => $"{baseClass} hg-button-space",
+            _ => baseClass
+        };
+    }
+
+    private RenderFragment GetKeyDisplay(string key)
+    {
+        return key switch
+        {
+            "{bksp}" => @<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 5a2 2 0 0 0-1.344.519l-6.328 5.74a1 1 0 0 0 0 1.481l6.328 5.741A2 2 0 0 0 10 19h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2z"/><path d="m12 9 6 6"/><path d="m18 9-6 6"/></svg>,
+            "{enter}" => @<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(180deg)"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>,
+            "{shift}" => @<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L4 14h5v8h6v-8h5z"/></svg>,
+            "{space}" => @<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17v1c0 .5-.5 1-1 1H3c-.5 0-1-.5-1-1v-1"/></svg>,
+            _ => @<span>@key</span>
+        };
+    }
+
+    private void HandleKeyPress(string key)
+    {
+        switch (key)
+        {
+            case "{bksp}":
+                if (_inputValue.Length > 0)
+                {
+                    _inputValue = _inputValue[..^1];
+                    UpdateDisplayValue();
+                }
+                break;
+            case "{enter}":
+                _ = Confirm();
+                break;
+            case "{shift}":
+                _shiftActive = !_shiftActive;
+                break;
+            case "{space}":
+                _inputValue += " ";
+                if (_inputType == InputType.Password)
+                {
+                    RevealLastCharacter();
+                }
+                break;
+            default:
+                _inputValue += key;
+                if (_inputType == InputType.Password)
+                {
+                    RevealLastCharacter();
+                }
+                if (_shiftActive && (_inputType == InputType.Text || _inputType == InputType.Password))
+                {
+                    _shiftActive = false;
+                }
+                break;
+        }
+    }
+
+    private void RevealLastCharacter()
+    {
+        _maskTimer?.Stop();
+        _maskTimer?.Dispose();
+
+        _lastRevealedIndex = _inputValue.Length - 1;
+        UpdateDisplayValue(revealLast: true);
+
+        _maskTimer = new System.Timers.Timer(500);
+        _maskTimer.Elapsed += (s, e) =>
+        {
+            _maskTimer?.Stop();
+            InvokeAsync(() =>
+            {
+                _lastRevealedIndex = -1;
+                UpdateDisplayValue();
+                StateHasChanged();
+            });
+        };
+        _maskTimer.AutoReset = false;
+        _maskTimer.Start();
+    }
+
+    private void UpdateDisplayValue(bool revealLast = false)
+    {
+        if (_inputType != InputType.Password)
+        {
+            _displayValue = _inputValue;
+            return;
+        }
+
+        if (_inputValue.Length == 0)
+        {
+            _displayValue = "";
+            return;
+        }
+
+        if (revealLast && _inputValue.Length > 0)
+        {
+            _displayValue = new string('●', _inputValue.Length - 1) + _inputValue[^1];
+        }
+        else
+        {
+            _displayValue = new string('●', _inputValue.Length);
+        }
+    }
+
+    private void HandlePreviewInput(ChangeEventArgs e)
+    {
+        // Don't allow direct input for password fields (they're readonly)
+        if (_inputType == InputType.Password) return;
+
+        _inputValue = e.Value?.ToString() ?? "";
+    }
+
+    private void HandleInputKeydown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            _ = Confirm();
+        }
+        else if (e.Key == "Escape")
+        {
+            Cancel();
+        }
+    }
+
+    private async Task Confirm()
+    {
+        if (_targetInputId != null)
+        {
+            await JSRuntime.InvokeVoidAsync("virtualKeyboard.setInputValue", _targetInputId, _inputValue);
+        }
+
+        _isVisible = false;
+        _inputValue = "";
+        _originalValue = "";
+        _targetInputId = null;
+        KeyboardService.Confirm(_inputValue);
+    }
+
+    private void Cancel()
+    {
+        _isVisible = false;
+        _inputValue = "";
+        _originalValue = "";
+        _targetInputId = null;
+        KeyboardService.Cancel();
+    }
+
+    private void ClearInput()
+    {
+        _inputValue = "";
+        _displayValue = "";
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", _inputValue);
+        }
+        catch
+        {
+            // Clipboard API might not be available
+        }
+    }
+
+    private async Task PasteFromClipboard()
+    {
+        try
+        {
+            var text = await JSRuntime.InvokeAsync<string>("navigator.clipboard.readText");
+            if (!string.IsNullOrEmpty(text))
+            {
+                _inputValue += text;
+            }
+        }
+        catch
+        {
+            // Clipboard API might not be available
+        }
+    }
+}

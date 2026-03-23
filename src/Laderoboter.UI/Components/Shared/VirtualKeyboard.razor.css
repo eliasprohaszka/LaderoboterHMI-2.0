@@ -1,0 +1,419 @@
+/* Full screen backdrop (transparent, just for click-to-close) */
+.keyboard-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: transparent;
+}
+
+/* Keyboard container - fixed at bottom */
+.keyboard-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
+    pointer-events: auto;
+    animation: keyboard-slide-in 0.3s ease forwards;
+}
+
+@keyframes keyboard-slide-in {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Blur background layer */
+.keyboard-blur-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(220, 220, 220, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Fixed top border layer */
+.border-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.5);
+    transform: translate3d(0, 0, 0);
+    contain: strict;
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Content layer */
+.keyboard-content {
+    position: relative;
+    max-width: 56rem;
+    margin: 0 auto;
+    padding: 1rem;
+    z-index: 10;
+}
+
+.keyboard-content.keyboard-number-layout {
+    max-width: 300px !important;
+    margin: 0 auto !important;
+}
+
+/* Header */
+.keyboard-header {
+    margin-bottom: 0.75rem;
+    width: 100%;
+}
+
+/* Preview input */
+.keyboard-preview-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    font-size: 1.125rem;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 0.5rem;
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(4px);
+    color: #111827;
+    font-weight: 500;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transition: border-color 0.15s ease;
+}
+
+.keyboard-preview-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+}
+
+/* Simple keyboard theme */
+.simple-keyboard.virtual-keyboard-theme {
+    background: linear-gradient(180deg, #c8c8c8 0%, #b0b0b0 100%);
+    border: 1px solid #a0a0a0;
+    border-radius: 16px;
+    padding: 14px 16px;
+    width: 100%;
+    box-shadow:
+        0 8px 16px rgba(0, 0, 0, 0.12),
+        0 2px 4px rgba(0, 0, 0, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.15),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.simple-keyboard.virtual-keyboard-theme .hg-row {
+    display: flex;
+    margin-bottom: 5px;
+    justify-content: center;
+}
+
+.simple-keyboard.virtual-keyboard-theme .hg-row:last-child {
+    margin-bottom: 0;
+}
+
+/* Base button styles */
+.simple-keyboard .hg-button {
+    height: 50px !important;
+    max-height: 50px !important;
+    min-height: 50px !important;
+    min-width: 40px;
+    flex: 1;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    background: linear-gradient(175deg, #ffffff 0%, #fafafa 50%, #f0f0f0 100%) !important;
+    border: 1px solid #e0e0e0 !important;
+    border-bottom-width: 2px !important;
+    border-bottom-color: #d0d0d0 !important;
+    border-radius: 6px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #414141 !important;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+    box-shadow:
+        0 3px 0 0 #d5d5d5,
+        0 4px 2px rgba(0, 0, 0, 0.08),
+        0 6px 8px rgba(0, 0, 0, 0.04),
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.02) !important;
+    margin: 3px !important;
+    padding: 0 !important;
+    position: relative !important;
+    transition: all 0.08s ease-out !important;
+    cursor: pointer !important;
+}
+
+.simple-keyboard .hg-button:hover {
+    background: linear-gradient(175deg, #ffffff 0%, #fcfcfc 50%, #f5f5f5 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow:
+        0 4px 0 0 #d5d5d5,
+        0 5px 3px rgba(0, 0, 0, 0.1),
+        0 8px 12px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 1),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.02) !important;
+}
+
+.simple-keyboard .hg-button:active {
+    background: linear-gradient(175deg, #f0f0f0 0%, #e8e8e8 50%, #e0e0e0 100%) !important;
+    transform: translateY(2px) !important;
+    box-shadow:
+        0 1px 0 0 #d5d5d5,
+        0 1px 1px rgba(0, 0, 0, 0.15),
+        inset 0 1px 3px rgba(0, 0, 0, 0.15),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Function button styles */
+.simple-keyboard .hg-button.hg-functionBtn {
+    background: linear-gradient(175deg, #9ca3af 0%, #8892a0 50%, #6b7280 100%) !important;
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    border-bottom-color: #4b5563 !important;
+    box-shadow:
+        0 3px 0 0 #5a6370,
+        0 4px 2px rgba(0, 0, 0, 0.1),
+        0 6px 8px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.simple-keyboard .hg-button.hg-functionBtn:hover {
+    background: linear-gradient(175deg, #a8aeb8 0%, #9ca3af 50%, #7a8390 100%) !important;
+}
+
+/* Red (backspace) button styles */
+.simple-keyboard .hg-button.hg-red {
+    background: linear-gradient(175deg, #fca5a5 0%, #f87171 50%, #dc2626 100%) !important;
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    border-bottom-color: #b91c1c !important;
+    box-shadow:
+        0 3px 0 0 #c53030,
+        0 4px 2px rgba(0, 0, 0, 0.1),
+        0 6px 8px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.simple-keyboard .hg-button.hg-red:hover {
+    background: linear-gradient(175deg, #fecaca 0%, #fca5a5 50%, #f87171 100%) !important;
+}
+
+/* Highlight (enter) button styles */
+.simple-keyboard .hg-button.hg-highlight {
+    background: linear-gradient(175deg, #29638a 0%, #1e5d86 50%, #004c7f 100%) !important;
+    color: white !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+    border-bottom-color: #00406b !important;
+    box-shadow:
+        0 3px 0 0 #004c7f,
+        0 4px 2px rgba(0, 0, 0, 0.1),
+        0 6px 8px rgba(0, 0, 0, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1) !important;
+}
+
+.simple-keyboard .hg-button.hg-highlight:hover {
+    background: linear-gradient(175deg, #93c5fd 0%, #60a5fa 50%, #3b82f6 100%) !important;
+}
+
+/* Active button state (for shift) */
+.simple-keyboard .hg-button.hg-activeButton {
+    background: linear-gradient(175deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%) !important;
+}
+
+/* Active states for function buttons */
+.simple-keyboard .hg-button.hg-functionBtn:active,
+.simple-keyboard .hg-button.hg-red:active,
+.simple-keyboard .hg-button.hg-highlight:active {
+    transform: translateY(2px) !important;
+    box-shadow:
+        0 1px 0 0 rgba(0, 0, 0, 0.2),
+        0 1px 1px rgba(0, 0, 0, 0.15),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2),
+        inset 0 -1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Space button */
+.simple-keyboard .hg-button.hg-button-space {
+    flex-grow: 5 !important;
+    max-width: none !important;
+}
+
+/* Enter button */
+.simple-keyboard .hg-button.hg-button-enter {
+    flex-grow: 2 !important;
+    min-width: 100px !important;
+}
+
+/* Number keyboard adjustments */
+.keyboard-number-layout .simple-keyboard .hg-button {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex-grow: 1 !important;
+}
+
+.keyboard-number-layout .simple-keyboard .hg-button.hg-button-enter {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex-grow: 1 !important;
+}
+
+/* Close button styling */
+.keyboard-close-button {
+    height: 50px;
+    min-width: 50px;
+    width: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(175deg, #29638a 0%, #1e5d86 50%, #004c7f 100%);
+    border: 1px solid #e0e0e0;
+    border-bottom-width: 2px;
+    border-bottom-color: #00406b;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 0 0 #004c7f, 0 4px 2px rgba(0, 0, 0, 0.1),
+        0 6px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+    margin: 0;
+    padding: 0;
+    position: relative;
+    transition: all 0.08s ease-out;
+    cursor: pointer;
+}
+
+.keyboard-close-button:hover {
+    background: linear-gradient(175deg, #93c5fd 0%, #60a5fa 50%, #3b82f6 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 0 #004c7f, 0 5px 3px rgba(0, 0, 0, 0.1),
+        0 8px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard-close-button:active {
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.15),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Action button styling */
+.keyboard-action-button {
+    height: 50px;
+    min-width: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(175deg, #ffffff 0%, #f5f5f5 50%, #e8e8e8 100%);
+    border: 1px solid #e0e0e0;
+    border-bottom-width: 2px;
+    border-bottom-color: #c8c8c8;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333333;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+    box-shadow: 0 3px 0 0 #c0c0c0, 0 4px 2px rgba(0, 0, 0, 0.1),
+        0 6px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.05);
+    margin: 0;
+    padding: 0;
+    position: relative;
+    transition: all 0.08s ease-out;
+    cursor: pointer;
+}
+
+.keyboard-action-button:hover {
+    background: linear-gradient(175deg, #ffffff 0%, #fafafa 50%, #f0f0f0 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 0 #c0c0c0, 0 5px 3px rgba(0, 0, 0, 0.1),
+        0 8px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.8),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.05);
+}
+
+.keyboard-action-button:active {
+    background: linear-gradient(175deg, #e8e8e8 0%, #d8d8d8 50%, #c8c8c8 100%);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.15),
+        inset 0 1px 3px rgba(0, 0, 0, 0.15), inset 0 -1px 0 rgba(255, 255, 255, 0.3);
+}
+
+/* Clear button styling */
+.keyboard-clear-button {
+    height: 50px;
+    min-width: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(175deg, #fca5a5 0%, #f87171 50%, #dc2626 100%);
+    border: 1px solid #e0e0e0;
+    border-bottom-width: 2px;
+    border-bottom-color: #b91c1c;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 3px 0 0 #c53030, 0 4px 2px rgba(0, 0, 0, 0.1),
+        0 6px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+    margin: 0;
+    padding: 0;
+    position: relative;
+    transition: all 0.08s ease-out;
+    cursor: pointer;
+}
+
+.keyboard-clear-button:hover {
+    background: linear-gradient(175deg, #fecaca 0%, #fca5a5 50%, #f87171 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 0 0 #c53030, 0 5px 3px rgba(0, 0, 0, 0.1),
+        0 8px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.1);
+}
+
+.keyboard-clear-button:active {
+    background: linear-gradient(175deg, #f87171 0%, #dc2626 50%, #b91c1c 100%);
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 0 rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.15),
+        inset 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+    .simple-keyboard .hg-button {
+        height: 45px !important;
+        max-height: 45px !important;
+        min-height: 45px !important;
+        font-size: 14px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .simple-keyboard .hg-button {
+        height: 45px !important;
+        max-height: 45px !important;
+        min-height: 45px !important;
+        font-size: 14px !important;
+    }
+
+    .simple-keyboard.virtual-keyboard-theme {
+        padding: 8px;
+    }
+}

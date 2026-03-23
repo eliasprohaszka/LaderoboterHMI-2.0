@@ -8,58 +8,47 @@
 
 @if (IsVisible)
 {
-    <!-- Backdrop -->
-    <div class="fixed inset-0 bg-black/20 z-50" @onclick="Close" @onclick:stopPropagation="true">
-        <!-- Menu -->
-        <div class="absolute bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden min-w-[200px]"
-             style="@MenuStyle"
-             @onclick:stopPropagation="true">
-
+    <div class="menu-overlay" @onclick="Close" @onclick:stopPropagation="true">
+        <div class="menu" @onclick:stopPropagation="true">
             <!-- Header -->
-            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100">
-                <div class="font-semibold text-gray-800 text-sm">@WorkpieceId</div>
-                <div class="text-xs text-gray-500 mt-1">
-                    @T.Translate("workpiece.currentStatus"): @CurrentStatusText
-                </div>
+            <div class="menu-header">
+                <div class="menu-title">@WorkpieceId</div>
+                <div class="menu-subtitle">@T.Translate("workpiece.currentStatus"): @CurrentStatusText</div>
             </div>
 
             <!-- Actions -->
-            <div class="py-2">
+            <div class="menu-actions">
                 <!-- Locked -->
-                <button class="w-full px-4 py-3 text-left active:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-3"
-                        @onclick="() => SetStatus(WorkpieceState.Locked)">
-                    <div class="w-4 h-4 rounded-full bg-gray-500"></div>
-                    <div>
-                        <div class="font-medium text-gray-800 text-sm">@T.Translate("workpieceMenu.lock")</div>
-                        <div class="text-xs text-gray-500">@T.Translate("workpieceMenu.lockDescription")</div>
+                <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Locked)">
+                    <div class="action-icon locked"></div>
+                    <div class="action-text">
+                        <div class="title">@T.Translate("workpieceMenu.lock")</div>
+                        <div class="description">@T.Translate("workpieceMenu.lockDescription")</div>
                     </div>
                 </button>
 
                 <!-- Unprocessed (Ready) -->
-                <button class="w-full px-4 py-3 text-left active:bg-gray-50 active:bg-blue-50 transition-colors flex items-center gap-3"
-                        @onclick="() => SetStatus(WorkpieceState.Unprocessed)">
-                    <div class="w-4 h-4 rounded-full bg-[#004F7C]"></div>
-                    <div>
-                        <div class="font-medium text-gray-800 text-sm">@T.Translate("workpieceMenu.reset")</div>
-                        <div class="text-xs text-gray-500">@T.Translate("workpieceMenu.resetDescription")</div>
+                <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Unprocessed)">
+                    <div class="action-icon unprocessed"></div>
+                    <div class="action-text">
+                        <div class="title">@T.Translate("workpieceMenu.reset")</div>
+                        <div class="description">@T.Translate("workpieceMenu.resetDescription")</div>
                     </div>
                 </button>
 
                 <!-- Processed (Completed) -->
-                <button class="w-full px-4 py-3 text-left active:bg-gray-50 active:bg-green-50 transition-colors flex items-center gap-3"
-                        @onclick="() => SetStatus(WorkpieceState.Processed)">
-                    <div class="w-4 h-4 rounded-full bg-green-600"></div>
-                    <div>
-                        <div class="font-medium text-gray-800 text-sm">@T.Translate("workpieceMenu.complete")</div>
-                        <div class="text-xs text-gray-500">@T.Translate("workpieceMenu.completeDescription")</div>
+                <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Processed)">
+                    <div class="action-icon processed"></div>
+                    <div class="action-text">
+                        <div class="title">@T.Translate("workpieceMenu.complete")</div>
+                        <div class="description">@T.Translate("workpieceMenu.completeDescription")</div>
                     </div>
                 </button>
             </div>
 
-            <!-- Cancel -->
-            <div class="border-t border-gray-100 p-2">
-                <button class="w-full px-4 py-2 text-gray-600 text-sm font-medium active:bg-gray-50 active:bg-gray-100 rounded-lg transition-colors"
-                        @onclick="Close">
+            <!-- Footer -->
+            <div class="menu-footer">
+                <button class="cancel-button" @onclick="Close">
                     @T.Translate("common.cancel")
                 </button>
             </div>
@@ -87,8 +76,6 @@
         WorkpieceState.InMachine => T.Translate("workpiece.inMachine"),
         _ => T.Translate("workpiece.unknown")
     };
-
-    private string MenuStyle => "left: 50%; top: 50%; transform: translate(-50%, -50%);";
 
     private async Task SetStatus(WorkpieceState newState)
     {
