@@ -3,8 +3,62 @@
    Industrial HMI with Subtle Glassmorphism
    =========================================== */
 
-/* Import distinctive fonts */
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+/* Local Font Definitions */
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/Roboto-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/Roboto-Medium.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Roboto';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('../fonts/Roboto-Bold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/JetBrainsMono-Regular.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 500;
+    font-display: swap;
+    src: url('../fonts/JetBrainsMono-Medium.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../fonts/JetBrainsMono-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'JetBrains Mono';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('../fonts/JetBrainsMono-Bold.woff2') format('woff2');
+}
 
 /* CSS Reset & Base */
 *, *::before, *::after {
@@ -15,7 +69,7 @@
 html, body {
     margin: 0;
     padding: 0;
-    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 16px;
     line-height: 1.5;
     color: #1a2332;
@@ -33,7 +87,7 @@ html, body {
 
 h1, h2, h3, h4, h5, h6 {
     margin: 0;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
 }
@@ -152,7 +206,7 @@ p {
     padding: var(--space-md) var(--space-lg);
 
     /* Visual styling */
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-weight: 600;
     font-size: 1rem;
     letter-spacing: 0.01em;
@@ -910,7 +964,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .maintenance-tile .tile-label {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-weight: 600;
     font-size: 0.9rem;
     color: var(--color-gray-800);
@@ -939,7 +993,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .text-display {
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-weight: 700;
     letter-spacing: -0.02em;
 }
@@ -1002,7 +1056,7 @@ svg[blazicon].w-16 { width: 4rem !important; height: 4rem !important; }
     transform: rotate(180deg);
     white-space: nowrap;
     letter-spacing: 0.1em;
-    font-family: 'Outfit', sans-serif;
+    font-family: 'Roboto', sans-serif;
     font-weight: 600;
 }
 

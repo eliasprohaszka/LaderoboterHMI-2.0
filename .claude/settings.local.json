@@ -24,7 +24,8 @@
       "Bash(dotnet restore:*)",
       "Bash(dotnet list:*)",
       "Bash(dir \"c:\\\\Users\\\\elias.prohaszka\\\\Documents\\\\dev\\\\LaderoboterHMI-2.0\\\\src\\\\Laderoboter.Core\\\\Services\\\\*.cs\")",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(curl:*)"
     ]
   }
 }
