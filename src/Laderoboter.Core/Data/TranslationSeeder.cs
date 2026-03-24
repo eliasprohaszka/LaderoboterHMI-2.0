@@ -516,6 +516,18 @@ public static class TranslationSeeder
         Add("ghSettings.jobList.title", "Jobliste", "Job List", "ghSettings");
         Add("ghSettings.jobList.enable", "Jobliste aktivieren", "Enable job list", "ghSettings");
         Add("ghSettings.jobList.enableDescription", "Aktiviert die Jobliste-Funktionalität", "Enables the job list functionality", "ghSettings");
+
+        // === Job List ===
+        Add("jobList.title", "Jobliste", "Job List", "jobList");
+        Add("jobList.collapse", "Einklappen", "Collapse", "jobList");
+        Add("jobList.dragInfo", "Per Drag & Drop die Reihenfolge ändern", "Drag & drop to change order", "jobList");
+        Add("jobList.empty", "Keine Jobs in der Liste", "No jobs in list", "jobList");
+        Add("jobList.remove", "Aus Liste entfernen", "Remove from list", "jobList");
+        Add("jobList.clearAll", "Alle entfernen", "Clear all", "jobList");
+        Add("jobList.addToList", "Zur Jobliste hinzufügen", "Add to job list", "jobList");
+        Add("jobList.addToListDescription", "Fügt dieses Werkstück zur Jobliste hinzu", "Adds this workpiece to the job list", "jobList");
+        Add("jobList.alreadyInList", "Werkstück ist bereits in der Jobliste", "Workpiece is already in job list", "jobList");
+        Add("jobList.listFull", "Jobliste ist voll (max. 16 Jobs)", "Job list is full (max. 16 jobs)", "jobList");
         Add("ghSettings.shelf.title", "Regal Werkstückbearbeitung", "Shelf Workpiece Editing", "ghSettings");
         Add("ghSettings.shelf.enable", "Werkstückbearbeitung aktivieren", "Enable workpiece editing", "ghSettings");
         Add("ghSettings.shelf.enableDescription", "Ermöglicht das Ändern des Werkstückträgerstatus im Regal", "Allows changing workpiece carrier status in the shelf", "ghSettings");

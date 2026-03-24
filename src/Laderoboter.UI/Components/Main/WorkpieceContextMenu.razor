@@ -5,6 +5,8 @@
 @inject IRobotService RobotService
 @inject ITranslationService T
 @inject IUserActionLogService ActionLog
+@inject IJobService JobService
+@inject IGhSettingsService GhSettings
 
 @if (IsVisible)
 {
@@ -18,6 +20,29 @@
 
             <!-- Actions -->
             <div class="menu-actions">
+                <!-- Add to Job List (only visible if Job List is enabled) -->
+                @if (GhSettings.IsJobListEnabled)
+                {
+                    <button class="action-button @(IsInJobList ? "disabled" : "")"
+                            @onclick="AddToJobList"
+                            disabled="@IsInJobList">
+                        <div class="action-icon joblist"></div>
+                        <div class="action-text">
+                            <div class="title">@T.Translate("jobList.addToList")</div>
+                            <div class="description">
+                                @if (IsInJobList)
+                                {
+                                    @T.Translate("jobList.alreadyInList")
+                                }
+                                else
+                                {
+                                    @T.Translate("jobList.addToListDescription")
+                                }
+                            </div>
+                        </div>
+                    </button>
+                }
+
                 <!-- Locked -->
                 <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Locked)">
                     <div class="action-icon locked"></div>
@@ -62,8 +87,18 @@
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<WorkpieceStatus> OnStatusChanged { get; set; }
 
+    private bool IsInJobList = false;
+
+    private int PaletteNumber => Workpiece != null
+        ? (Workpiece.Position <= 8 ? 1 : 2)
+        : 0;
+
+    private int PositionOnPalette => Workpiece != null
+        ? ((Workpiece.Position - 1) % 8) + 1
+        : 0;
+
     private string WorkpieceId => Workpiece != null
-        ? $"P{(Workpiece.Position <= 8 ? 1 : 2)}-{((Workpiece.Position - 1) % 8) + 1}"
+        ? $"P{PaletteNumber}-{PositionOnPalette}"
         : "";
 
     private string CurrentStatusText => Workpiece?.State switch
@@ -76,6 +111,32 @@
         WorkpieceState.InMachine => T.Translate("workpiece.inMachine"),
         _ => T.Translate("workpiece.unknown")
     };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible && Workpiece != null && GhSettings.IsJobListEnabled)
+        {
+            IsInJobList = await JobService.IsWorkpieceInJobListAsync(PaletteNumber, PositionOnPalette);
+        }
+    }
+
+    private async Task AddToJobList()
+    {
+        if (Workpiece == null || IsInJobList) return;
+
+        var job = await JobService.AddJobAsync(PaletteNumber, PositionOnPalette);
+
+        if (job != null)
+        {
+            // Log action
+            await ActionLog.LogActionAsync(UserActions.JobAdded,
+                $"{WorkpieceId} zur Jobliste hinzugefügt (Sequenz: {job.SequenceNumber})");
+
+            IsInJobList = true;
+        }
+
+        await Close();
+    }
 
     private async Task SetStatus(WorkpieceState newState)
     {

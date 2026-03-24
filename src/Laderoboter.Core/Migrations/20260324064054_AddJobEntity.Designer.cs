@@ -3,6 +3,7 @@ using System;
 using Laderoboter.Core.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Laderoboter.Core.Migrations
 {
     [DbContext(typeof(LaderoboterDbContext))]
-    partial class LaderoboterDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324064054_AddJobEntity")]
+    partial class AddJobEntity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.25");

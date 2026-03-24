@@ -1,0 +1,397 @@
+@using Laderoboter.Core.Services
+@using Laderoboter.Core.Models
+@using Laderoboter.Core.Interfaces
+@using Microsoft.JSInterop
+@inject IJobService JobService
+@inject ITranslationService T
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<div class="job-sidebar glass-card @(IsCollapsed ? "collapsed" : "expanded")"
+     @onclick="HandleSidebarClick">
+
+    @if (IsCollapsed)
+    {
+        <!-- Collapsed State - Vertical Text with Touch Target -->
+        <div class="collapsed-content">
+            <div class="vertical-text">
+                @T.Translate("jobList.title")
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- Expanded State -->
+        <div class="sidebar-header">
+            <div class="header-title">
+                <Blazicon Svg="Lucide.ListOrdered" class="header-icon" />
+                <h3>@T.Translate("jobList.title")</h3>
+            </div>
+            <button class="collapse-btn robot-control-btn btn-icon"
+                    @onclick="ToggleCollapse"
+                    @onclick:stopPropagation="true"
+                    title="@T.Translate("jobList.collapse")">
+                <Blazicon Svg="Lucide.ChevronLeft" class="w-5 h-5" />
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="sidebar-content">
+            <!-- Info Text -->
+            <div class="sidebar-info">
+                @T.Translate("jobList.dragInfo")
+            </div>
+
+            <!-- Job List -->
+            <div class="job-list-container">
+                @if (Jobs.Count == 0)
+                {
+                    <div class="empty-state">
+                        <Blazicon Svg="Lucide.ListX" class="empty-icon" />
+                        <span>@T.Translate("jobList.empty")</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="job-list" id="sortable-job-list">
+                        @foreach (var job in Jobs)
+                        {
+                            <div @key="job.Id" class="job-item" data-job-id="@job.Id">
+                                <!-- Drag Handle -->
+                                <div class="drag-handle">
+                                    <Blazicon Svg="Lucide.GripVertical" class="grip-icon" />
+                                </div>
+
+                                <!-- Sequence Badge -->
+                                <div class="sequence-badge @(HasUnsavedChanges ? "unsaved" : "")">
+                                    @job.SequenceNumber
+                                </div>
+
+                                <!-- Workpiece Info -->
+                                <div class="job-info">
+                                    <span class="workpiece-id">@job.WorkpieceId</span>
+                                    @if (job.ProgramNumber.HasValue)
+                                    {
+                                        <span class="program-number">Prog: @job.ProgramNumber</span>
+                                    }
+                                </div>
+
+                                <!-- Remove Button -->
+                                <button class="remove-btn"
+                                        @onclick="() => RemoveJob(job.Id)"
+                                        @onclick:stopPropagation="true"
+                                        title="@T.Translate("jobList.remove")">
+                                    <Blazicon Svg="Lucide.X" class="w-4 h-4" />
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            <!-- Footer with Save/Cancel (only visible when there are unsaved changes) -->
+            @if (HasUnsavedChanges)
+            {
+                <div class="footer-actions">
+                    <button class="btn-cancel" @onclick="CancelChanges" @onclick:stopPropagation="true">
+                        @T.Translate("common.cancel")
+                    </button>
+                    <button class="btn-save" @onclick="SaveChanges" @onclick:stopPropagation="true" disabled="@IsSaving">
+                        @if (IsSaving)
+                        {
+                            <span class="spinner-small"></span>
+                        }
+                        @T.Translate("common.save")
+                    </button>
+                </div>
+            }
+
+            <!-- Clear All Button (only visible when there are jobs) -->
+            @if (Jobs.Count > 0 && !HasUnsavedChanges)
+            {
+                <div class="footer-actions">
+                    <button class="btn-clear" @onclick="ClearAllJobs" @onclick:stopPropagation="true">
+                        <Blazicon Svg="Lucide.Trash2" class="w-4 h-4 mr-1" />
+                        @T.Translate("jobList.clearAll")
+                    </button>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private const string SortableElementId = "sortable-job-list";
+    private bool IsCollapsed = true;
+    private List<Job> Jobs = new();
+    private List<Job> OriginalJobs = new();
+    private bool HasUnsavedChanges = false;
+    private bool IsSaving = false;
+    private DotNetObjectReference<JobListSidebar>? _dotNetRef;
+    private bool _sortableInitialized = false;
+    private bool _needsFooterUpdate = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        JobService.JobListChanged += OnJobListChanged;
+        T.LanguageChanged += OnLanguageChanged;
+        _dotNetRef = DotNetObjectReference.Create(this);
+        await LoadJobs();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // After footer update re-render, restore DOM order
+        if (_needsFooterUpdate)
+        {
+            _needsFooterUpdate = false;
+            // Restore DOM to match our Jobs list order
+            var jobIds = Jobs.Select(j => j.Id.ToString()).ToArray();
+            await JS.InvokeVoidAsync("sortableInterop.restoreDomOrder", SortableElementId, jobIds);
+            _sortableInitialized = false;
+        }
+
+        if (!IsCollapsed && Jobs.Count > 0 && !_sortableInitialized)
+        {
+            await InitializeSortable();
+        }
+    }
+
+    private async Task InitializeSortable()
+    {
+        if (_sortableInitialized) return;
+
+        try
+        {
+            _sortableInitialized = true;
+            await JS.InvokeVoidAsync("sortableInterop.create", SortableElementId, _dotNetRef);
+        }
+        catch (JSDisconnectedException)
+        {
+            _sortableInitialized = false;
+        }
+        catch (ObjectDisposedException)
+        {
+            _sortableInitialized = false;
+        }
+        catch (Exception ex)
+        {
+            _sortableInitialized = false;
+            Console.WriteLine($"Error initializing SortableJS: {ex.Message}");
+        }
+    }
+
+    private async Task DestroySortable()
+    {
+        if (_sortableInitialized)
+        {
+            _sortableInitialized = false;
+            try
+            {
+                await JS.InvokeVoidAsync("sortableInterop.destroy", SortableElementId);
+            }
+            catch (JSDisconnectedException)
+            {
+                // Circuit disconnected, ignore
+            }
+            catch (ObjectDisposedException)
+            {
+                // Already disposed, ignore
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error destroying sortable: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnSortEnd(int oldIndex, int newIndex)
+    {
+        if (oldIndex == newIndex || oldIndex < 0 || newIndex < 0 ||
+            oldIndex >= Jobs.Count || newIndex >= Jobs.Count)
+        {
+            return;
+        }
+
+        // Update the data model to match what SortableJS did to the DOM
+        var itemToMove = Jobs[oldIndex];
+        Jobs.RemoveAt(oldIndex);
+
+        if (newIndex < Jobs.Count)
+        {
+            Jobs.Insert(newIndex, itemToMove);
+        }
+        else
+        {
+            Jobs.Add(itemToMove);
+        }
+
+        // Recalculate sequence numbers
+        for (int i = 0; i < Jobs.Count; i++)
+        {
+            Jobs[i].SequenceNumber = i + 1;
+        }
+
+        HasUnsavedChanges = true;
+
+        // Update badges via JS (DOM is already sorted by SortableJS)
+        var sequences = Jobs.Select(j => j.SequenceNumber).ToArray();
+        await JS.InvokeVoidAsync("sortableInterop.updateBadges", SortableElementId, sequences);
+
+        // Show footer buttons - need to re-render but preserve DOM order
+        _needsFooterUpdate = true;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnJobListChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                _sortableInitialized = false;
+                await LoadJobs();
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in OnJobListChanged: {ex.Message}");
+        }
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadJobs()
+    {
+        Jobs = await JobService.GetAllJobsAsync();
+        OriginalJobs = Jobs.Select(j => new Job
+        {
+            Id = j.Id,
+            PaletteNumber = j.PaletteNumber,
+            Position = j.Position,
+            SequenceNumber = j.SequenceNumber,
+            ProgramNumber = j.ProgramNumber
+        }).ToList();
+        HasUnsavedChanges = false;
+        _sortableInitialized = false;
+    }
+
+    private async Task HandleSidebarClick()
+    {
+        if (IsCollapsed)
+        {
+            await ToggleCollapse();
+        }
+    }
+
+    private async Task ToggleCollapse()
+    {
+        if (!IsCollapsed)
+        {
+            await DestroySortable();
+        }
+
+        IsCollapsed = !IsCollapsed;
+
+        if (!IsCollapsed)
+        {
+            await LoadJobs();
+        }
+    }
+
+    private void CheckForChanges()
+    {
+        if (Jobs.Count != OriginalJobs.Count)
+        {
+            HasUnsavedChanges = true;
+            return;
+        }
+
+        for (int i = 0; i < Jobs.Count; i++)
+        {
+            if (Jobs[i].Id != OriginalJobs[i].Id ||
+                Jobs[i].SequenceNumber != OriginalJobs[i].SequenceNumber)
+            {
+                HasUnsavedChanges = true;
+                return;
+            }
+        }
+
+        HasUnsavedChanges = false;
+    }
+
+    private async Task SaveChanges()
+    {
+        if (!HasUnsavedChanges || IsSaving)
+        {
+            return;
+        }
+
+        IsSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            // Temporarily unsubscribe to avoid double-handling
+            JobService.JobListChanged -= OnJobListChanged;
+
+            var jobIds = Jobs.Select(j => j.Id).ToList();
+            var success = await JobService.UpdateJobOrderAsync(jobIds);
+
+            if (success)
+            {
+                // Store current order before LoadJobs resets it
+                var currentOrderIds = Jobs.Select(j => j.Id.ToString()).ToArray();
+
+                _sortableInitialized = false;
+                await LoadJobs();
+
+                // Restore DOM to saved order
+                await JS.InvokeVoidAsync("sortableInterop.restoreDomOrder", SortableElementId, currentOrderIds);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving job order: {ex.Message}");
+        }
+        finally
+        {
+            // Re-subscribe
+            JobService.JobListChanged += OnJobListChanged;
+            IsSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CancelChanges()
+    {
+        // Restore DOM order to original before re-render
+        var originalJobIds = OriginalJobs.Select(j => j.Id.ToString()).ToArray();
+        await JS.InvokeVoidAsync("sortableInterop.restoreDomOrder", SortableElementId, originalJobIds);
+        _sortableInitialized = false;
+        await LoadJobs();
+    }
+
+    private async Task RemoveJob(int jobId)
+    {
+        await JobService.RemoveJobAsync(jobId);
+    }
+
+    private async Task ClearAllJobs()
+    {
+        await JobService.ClearAllJobsAsync();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        JobService.JobListChanged -= OnJobListChanged;
+        T.LanguageChanged -= OnLanguageChanged;
+        await DestroySortable();
+        _dotNetRef?.Dispose();
+    }
+}

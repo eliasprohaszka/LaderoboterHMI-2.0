@@ -84,8 +84,14 @@
                 <ProgramControl />
             </div>
 
-            <!-- Main Content Area: Palettes + Sidebar -->
+            <!-- Main Content Area: Sidebars + Palettes -->
             <div class="main-section">
+                <!-- Job List Sidebar (Left) - Only visible if enabled in GH Settings -->
+                @if (GhSettings.IsJobListEnabled)
+                {
+                    <JobListSidebar />
+                }
+
                 <!-- Palettes Area -->
                 <div class="palettes-area">
                     <PaletteSection
@@ -105,7 +111,7 @@
                         OnShelfWorkpieceStateChange="OnShelfWorkpieceStateChange" />
                 </div>
 
-                <!-- Speed Override Sidebar -->
+                <!-- Speed Override Sidebar (Right) -->
                 <SpeedOverrideSidebar />
             </div>
         </div>
@@ -198,6 +204,7 @@
         {
             RobotService.StatusChanged += OnStatusChanged;
             T.LanguageChanged += OnLanguageChanged;
+            GhSettings.SettingsChanged += OnGhSettingsChanged;
             _eventHandlerRegistered = true;
         }
 
@@ -271,6 +278,11 @@
     }
 
     private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnGhSettingsChanged(object? sender, EventArgs e)
     {
         InvokeAsync(StateHasChanged);
     }
@@ -957,6 +969,7 @@
         {
             RobotService.StatusChanged -= OnStatusChanged;
             T.LanguageChanged -= OnLanguageChanged;
+            GhSettings.SettingsChanged -= OnGhSettingsChanged;
             _eventHandlerRegistered = false;
         }
         _palette1Subscription?.Dispose();

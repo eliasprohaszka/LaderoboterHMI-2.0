@@ -15,6 +15,7 @@ public class LaderoboterDbContext : DbContext
     public DbSet<Translation> Translations => Set<Translation>();
     public DbSet<User> Users => Set<User>();
     public DbSet<UserActionLog> UserActionLogs => Set<UserActionLog>();
+    public DbSet<Job> Jobs => Set<Job>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +85,16 @@ public class LaderoboterDbContext : DbContext
                 .WithMany(u => u.ActionLogs)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Job>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.SequenceNumber).IsUnique();
+            entity.HasIndex(e => new { e.PaletteNumber, e.Position }).IsUnique();
+            entity.Property(e => e.PaletteNumber).IsRequired();
+            entity.Property(e => e.Position).IsRequired();
+            entity.Property(e => e.SequenceNumber).IsRequired();
         });
 
         // Settings and Translations are seeded at runtime via SettingsSeeder.SeedAsync() and TranslationSeeder.SeedAsync()

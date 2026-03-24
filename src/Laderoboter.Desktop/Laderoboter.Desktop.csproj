@@ -28,7 +28,7 @@
         <ApplicationId>com.geibelhotz.laderoboter</ApplicationId>
 
         <!-- Versions -->
-        <ApplicationDisplayVersion>2.0.0</ApplicationDisplayVersion>
+        <ApplicationDisplayVersion>2.0.0-alpha</ApplicationDisplayVersion>
         <ApplicationVersion>2.0.0</ApplicationVersion>
 
         <!-- Copyright -->

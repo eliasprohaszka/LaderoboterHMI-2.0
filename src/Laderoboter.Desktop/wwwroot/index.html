@@ -53,6 +53,9 @@
 
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
+    <!-- SortableJS for drag and drop (local) -->
+    <script src="js/sortable.min.js"></script>
+
     <script>
         // Download a file with the given content
         function downloadFile(fileName, content, contentType) {
@@ -91,6 +94,100 @@
                 input.click();
             }
         }
+
+// SortableJS Interop
+        window.sortableInterop = {
+            instances: {},
+
+            create: function(elementId, dotNetRef) {
+                const self = this;
+
+                // Small delay to ensure DOM is ready
+                setTimeout(function() {
+                    const el = document.getElementById(elementId);
+                    if (!el) {
+                        console.error('SortableJS: Element not found:', elementId);
+                        return;
+                    }
+
+                    // Destroy existing instance if any
+                    if (self.instances[elementId]) {
+                        self.instances[elementId].destroy();
+                    }
+
+                    self.instances[elementId] = new Sortable(el, {
+                        animation: 150,
+                        handle: '.drag-handle',
+                        draggable: '.job-item',
+                        ghostClass: 'sortable-ghost',
+                        chosenClass: 'sortable-chosen',
+                        dragClass: 'sortable-drag',
+                        forceFallback: true,
+                        fallbackClass: 'sortable-fallback',
+                        fallbackOnBody: true,
+                        swapThreshold: 0.65,
+                        onEnd: function(evt) {
+                            if (evt.oldIndex !== evt.newIndex) {
+                                // SortableJS already moved the DOM element
+                                // Just notify Blazor to update the data model
+                                dotNetRef.invokeMethodAsync('OnSortEnd', evt.oldIndex, evt.newIndex);
+                            }
+                        }
+                    });
+                }, 100);
+            },
+
+            destroy: function(elementId) {
+                if (this.instances[elementId]) {
+                    this.instances[elementId].destroy();
+                    delete this.instances[elementId];
+                }
+            },
+
+            // Update sequence badges without full re-render
+            updateBadges: function(elementId, sequences) {
+                const el = document.getElementById(elementId);
+                if (!el) return;
+
+                const items = el.querySelectorAll('.job-item');
+                items.forEach((item, index) => {
+                    const badge = item.querySelector('.sequence-badge');
+                    if (badge && sequences[index] !== undefined) {
+                        badge.textContent = sequences[index];
+                        badge.classList.add('unsaved');
+                    }
+                });
+            },
+
+            // Save current DOM order (job IDs)
+            saveDomOrder: function(elementId) {
+                const el = document.getElementById(elementId);
+                if (!el) return null;
+
+                const items = el.querySelectorAll('.job-item');
+                return Array.from(items).map(item => item.getAttribute('data-job-id'));
+            },
+
+            // Restore DOM order to match saved order
+            restoreDomOrder: function(elementId, jobIds) {
+                const el = document.getElementById(elementId);
+                if (!el || !jobIds) return;
+
+                const items = Array.from(el.querySelectorAll('.job-item'));
+                const itemMap = {};
+                items.forEach(item => {
+                    itemMap[item.getAttribute('data-job-id')] = item;
+                });
+
+                // Clear and re-add in correct order
+                el.innerHTML = '';
+                jobIds.forEach(id => {
+                    if (itemMap[id]) {
+                        el.appendChild(itemMap[id]);
+                    }
+                });
+            }
+        };
 
         // Virtual Keyboard helpers
         window.virtualKeyboard = {

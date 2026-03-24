@@ -15,6 +15,12 @@ public static class UserActions
     public const string ShelfWorkpieceStateChanged = "ShelfWorkpieceStateChanged";
     public const string ShelfReset = "ShelfReset";
 
+    // Jobliste
+    public const string JobAdded = "JobAdded";
+    public const string JobRemoved = "JobRemoved";
+    public const string JobOrderChanged = "JobOrderChanged";
+    public const string JobListCleared = "JobListCleared";
+
     // Werkstückträger Be-/Entladung
     public const string ShelfLoad = "ShelfLoad";
     public const string ShelfUnload = "ShelfUnload";

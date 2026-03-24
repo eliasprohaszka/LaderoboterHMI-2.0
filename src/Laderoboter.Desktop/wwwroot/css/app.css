@@ -398,6 +398,9 @@ p {
     user-select: none;
     -webkit-user-select: none;
 
+    /* Text color - white for all status colors */
+    color: white;
+
     /* Transitions */
     transition: transform var(--transition-fast),
                 box-shadow var(--transition-fast);
@@ -1001,5 +1004,33 @@ svg[blazicon].w-16 { width: 4rem !important; height: 4rem !important; }
     letter-spacing: 0.1em;
     font-family: 'Outfit', sans-serif;
     font-weight: 600;
+}
+
+/* ===========================================
+   SortableJS - Drag and Drop Styles
+   =========================================== */
+.sortable-ghost {
+    opacity: 0.4 !important;
+    background: rgba(0, 79, 124, 0.1) !important;
+    border: 2px dashed #004F7C !important;
+}
+
+.sortable-chosen {
+    box-shadow: 0 4px 12px rgba(0, 79, 124, 0.3) !important;
+    transform: scale(1.02);
+    cursor: grabbing !important;
+}
+
+.sortable-drag {
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+}
+
+.sortable-fallback {
+    opacity: 1 !important;
+    background: white !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+    border-radius: 8px;
 }
 
