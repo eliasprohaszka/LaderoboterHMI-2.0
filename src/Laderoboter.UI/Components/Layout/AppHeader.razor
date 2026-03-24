@@ -98,6 +98,17 @@
                                             <Blazicon Svg="Lucide.Users" class="w-5 h-5" />
                                             <span>@T.Translate("header.userManagement")</span>
                                         </button>
+                                    }
+                                    @if (Authorization.CanAccessGhSettings())
+                                    {
+                                        <button @onclick="NavigateToGhSettings"
+                                                class="dropdown-item">
+                                            <Blazicon Svg="Lucide.Shield" class="w-5 h-5" />
+                                            <span>@T.Translate("ghSettings.title")</span>
+                                        </button>
+                                    }
+                                    @if (Authorization.CanAccessUserManagement() || Authorization.CanAccessGhSettings())
+                                    {
                                         <div class="dropdown-divider"></div>
                                     }
                                     <button @onclick="Logout"
@@ -293,6 +304,12 @@
     {
         await CloseUserMenuAnimated();
         Navigation.NavigateTo("/users");
+    }
+
+    private async Task NavigateToGhSettings()
+    {
+        await CloseUserMenuAnimated();
+        Navigation.NavigateTo("/gh-settings");
     }
 
     private async Task Logout()
