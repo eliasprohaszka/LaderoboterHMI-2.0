@@ -510,6 +510,21 @@ public static class TranslationSeeder
         Add("actionLog.search", "Suchen", "Search", "actionLog");
         Add("actionLog.reset", "Zurücksetzen", "Reset", "actionLog");
 
+        // === GH Settings ===
+        Add("ghSettings.title", "GH Einstellungen", "GH Settings", "ghSettings");
+        Add("ghSettings.description", "Erweiterte Systemkonfiguration (nur GH Admin)", "Advanced system configuration (GH Admin only)", "ghSettings");
+        Add("ghSettings.jobList.title", "Jobliste", "Job List", "ghSettings");
+        Add("ghSettings.jobList.enable", "Jobliste aktivieren", "Enable job list", "ghSettings");
+        Add("ghSettings.jobList.enableDescription", "Aktiviert die Jobliste-Funktionalität", "Enables the job list functionality", "ghSettings");
+        Add("ghSettings.shelf.title", "Regal Werkstückbearbeitung", "Shelf Workpiece Editing", "ghSettings");
+        Add("ghSettings.shelf.enable", "Werkstückbearbeitung aktivieren", "Enable workpiece editing", "ghSettings");
+        Add("ghSettings.shelf.enableDescription", "Ermöglicht das Ändern des Werkstückträgerstatus im Regal", "Allows changing workpiece carrier status in the shelf", "ghSettings");
+        Add("ghSettings.shelf.offline", "Offline-Modus", "Offline mode", "ghSettings");
+        Add("ghSettings.shelf.offlineDescription", "Änderungen werden nur lokal gespeichert, nicht an den Roboter gesendet", "Changes are saved locally only, not sent to the robot", "ghSettings");
+        Add("ghSettings.shelf.statusDisabled", "Werkstückbearbeitung deaktiviert", "Workpiece editing disabled", "ghSettings");
+        Add("ghSettings.shelf.statusOffline", "Offline-Modus aktiv - Änderungen werden nicht an Roboter gesendet", "Offline mode active - Changes are not sent to the robot", "ghSettings");
+        Add("ghSettings.shelf.statusOnline", "Online - Änderungen werden an Roboter gesendet", "Online - Changes are sent to the robot", "ghSettings");
+
         // === Errors ===
         Add("errors.000", "Kein Fehler", "No Error", "errors");
         Add("errors.001", "Werkzeugträgerzustand ungültig", "Tool carrier state invalid", "errors");

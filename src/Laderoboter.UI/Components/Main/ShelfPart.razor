@@ -38,9 +38,13 @@
 
     var currentState = Workpiece?.State ?? WorkpieceState.Unused;
 
-    // Determine mode-based CSS class for load/unload mode
+    // Determine mode-based CSS class for load/unload mode or disabled editing
     var modeDimClass = "";
-    if (LoadUnloadMode != ShelfLoadUnloadMode.None)
+    if (IsEditingDisabled)
+    {
+        modeDimClass = "editing-disabled";
+    }
+    else if (LoadUnloadMode != ShelfLoadUnloadMode.None)
     {
         if (IsLoadUnloadStation)
         {
@@ -113,6 +117,7 @@
     [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
     [Parameter] public ShelfLoadUnloadMode LoadUnloadMode { get; set; } = ShelfLoadUnloadMode.None;
     [Parameter] public bool IsLoadUnloadStation { get; set; } = false;
+    [Parameter] public bool IsEditingDisabled { get; set; } = false;
 
     private async Task OnClick()
     {

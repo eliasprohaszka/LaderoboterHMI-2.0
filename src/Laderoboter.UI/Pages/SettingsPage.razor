@@ -89,6 +89,14 @@ else
                                 <span>@T.Translate("actionLog.title")</span>
                             </button>
                         }
+                        @if (Authorization.CanAccessGhSettings())
+                        {
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" @onclick="NavigateToGhSettingsAndClose">
+                                <Blazicon Svg="Lucide.Shield" class="dropdown-item-icon" />
+                                <span>@T.Translate("ghSettings.title")</span>
+                            </button>
+                        }
                     </ActionDropdown>
                 </div>
             </div>
@@ -476,6 +484,17 @@ else
     {
         actionsDropdown?.Close();
         NavigateToActionLog();
+    }
+
+    private void NavigateToGhSettings()
+    {
+        Navigation.NavigateTo("/gh-settings");
+    }
+
+    private void NavigateToGhSettingsAndClose()
+    {
+        actionsDropdown?.Close();
+        NavigateToGhSettings();
     }
 
     private void NavigateBack()

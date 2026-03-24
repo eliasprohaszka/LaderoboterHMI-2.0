@@ -1,6 +1,8 @@
 @using Laderoboter.Core.Models
+@using Laderoboter.Core.Interfaces
 @using static Laderoboter.UI.Components.Main.ShelfLoadUnloadModeOverlay
 @inject ITranslationService T
+@inject IGhSettingsService GhSettings
 
 <!-- ShelfCard - 7x4 Regal Layout (R1-1 bis R7-4) -->
 <div class="shelf-card glass-card h-full flex flex-col @(loadUnloadMode != ShelfLoadUnloadMode.None ? "load-unload-active" : "")">
@@ -20,6 +22,20 @@
                 <div class="flex items-center gap-3">
                     <div class="shelf-indicator @(Mode == ShelfMode.Change ? "mode-change" : "mode-active")"></div>
                     <h3 class="shelf-title">Regal</h3>
+                    @if (!GhSettings.IsShelfWorkpieceEditingEnabled)
+                    {
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">
+                            <Blazicon Svg="Lucide.Lock" class="w-3 h-3 inline mr-1" />
+                            @T.Translate("ghSettings.shelf.statusDisabled")
+                        </span>
+                    }
+                    else if (GhSettings.IsShelfWorkpieceEditingOffline)
+                    {
+                        <span class="text-xs px-2 py-0.5 rounded-full bg-orange-200 text-orange-700">
+                            <Blazicon Svg="Lucide.WifiOff" class="w-3 h-3 inline mr-1" />
+                            Offline
+                        </span>
+                    }
                 </div>
                 <div class="flex items-center gap-3">
                     @if (Mode == ShelfMode.Change)
@@ -80,6 +96,7 @@
                         Workpiece="@workpiece"
                         LoadUnloadMode="@loadUnloadMode"
                         IsLoadUnloadStation="@isLoadUnloadStation"
+                        IsEditingDisabled="@(!GhSettings.IsShelfWorkpieceEditingEnabled)"
                         OnWorkpieceClick="HandleWorkpieceClick" />
                 }
             }
@@ -115,6 +132,7 @@
     [Parameter] public EventCallback OnToggleMode { get; set; }
     [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
     [Parameter] public EventCallback<(int Position, WorkpieceState NewState)> OnWorkpieceStateChange { get; set; }
+    [Parameter] public EventCallback<(int Position, WorkpieceState NewState)> OnWorkpieceStateChangeOffline { get; set; }
 
     // Load/Unload Mode State
     private const int LOAD_UNLOAD_POSITION = 17; // R5-1 = Row 5, Col 1 = (5-1)*4 + 1 = 17
@@ -155,6 +173,12 @@
 
     private async Task HandleWorkpieceClick(WorkpieceStatus workpiece)
     {
+        // Wenn Werkstückbearbeitung deaktiviert ist, keine Klicks erlauben
+        if (!GhSettings.IsShelfWorkpieceEditingEnabled)
+        {
+            return;
+        }
+
         // Check if this is R5-1 (load/unload station) and not in load/unload mode
         if (workpiece.Position == LOAD_UNLOAD_POSITION && loadUnloadMode == ShelfLoadUnloadMode.None)
         {

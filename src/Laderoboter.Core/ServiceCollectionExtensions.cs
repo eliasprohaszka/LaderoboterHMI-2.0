@@ -38,6 +38,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAuthorizationService, AuthorizationService>();
         services.AddSingleton<IUserService, UserService>();
         services.AddSingleton<IUserActionLogService, UserActionLogService>();
+        services.AddSingleton<IGhSettingsService, GhSettingsService>();
 
         return services;
     }
@@ -58,6 +59,12 @@ public static class ServiceCollectionExtensions
     {
         var translationService = serviceProvider.GetRequiredService<ITranslationService>();
         await translationService.InitializeAsync();
+    }
+
+    public static async Task InitializeGhSettingsAsync(this IServiceProvider serviceProvider)
+    {
+        var ghSettingsService = serviceProvider.GetRequiredService<IGhSettingsService>();
+        await ghSettingsService.LoadAsync();
     }
 
     /// <summary>

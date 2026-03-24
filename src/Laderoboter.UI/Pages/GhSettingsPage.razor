@@ -1,0 +1,212 @@
+@page "/gh-settings"
+@using Laderoboter.Core.Constants
+@using Laderoboter.Core.Interfaces
+@inject IGhSettingsService GhSettings
+@inject ITranslationService T
+@inject IAuthorizationService Authorization
+@inject IUserActionLogService ActionLog
+@inject NavigationManager Navigation
+@implements IDisposable
+
+@if (!Authorization.CanAccessGhSettings())
+{
+    <div class="h-full flex items-center justify-center">
+        <div class="bg-red-100 border border-red-300 rounded-xl p-8 text-center">
+            <Blazicon Svg="Lucide.ShieldX" class="w-16 h-16 text-red-500 mx-auto mb-4" />
+            <h2 class="text-xl font-bold text-red-700">@T.Translate("common.error")</h2>
+            <p class="text-red-600 mt-2">@T.Translate("users.noAccess")</p>
+        </div>
+    </div>
+}
+else
+{
+<div class="h-full pt-4">
+    <div class="border-0 bg-white/20 backdrop-blur-md rounded-lg shadow-lg overflow-hidden w-full h-full flex flex-col">
+        <!-- Header -->
+        <div class="px-6 py-4">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center space-x-3">
+                    <button
+                        class="p-2 transition-colors"
+                        @onclick="NavigateBack">
+                        <Blazicon Svg="Lucide.ArrowLeft" class="w-5 h-5 text-gray-600" />
+                    </button>
+                    <div class="p-2 bg-orange-100 rounded-lg">
+                        <Blazicon Svg="Lucide.Shield" class="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div class="text-left">
+                        <span class="font-semibold text-lg">@T.Translate("ghSettings.title")</span>
+                        <p class="text-sm text-gray-600 mt-1">@T.Translate("ghSettings.description")</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="px-6 pb-6 flex-1 overflow-auto">
+            <div class="grid grid-cols-1 gap-6 max-w-2xl">
+                <!-- Jobliste Card -->
+                <div class="bg-white/40 backdrop-blur-sm rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <Blazicon Svg="Lucide.ListTodo" class="w-5 h-5 text-primary" />
+                        <h3 class="font-semibold text-lg">@T.Translate("ghSettings.jobList.title")</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-sm font-medium text-gray-700">@T.Translate("ghSettings.jobList.enable")</span>
+                                <p class="text-xs text-gray-500 mt-1">@T.Translate("ghSettings.jobList.enableDescription")</p>
+                            </div>
+                            <button
+                                class="w-12 h-6 rounded-full transition-colors duration-200 @(jobListEnabled ? "bg-primary" : "bg-gray-300")"
+                                @onclick="ToggleJobList">
+                                <div class="w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-200 @(jobListEnabled ? "translate-x-6" : "translate-x-0.5")"></div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Regal Werkstückbearbeitung Card -->
+                <div class="bg-white/40 backdrop-blur-sm rounded-xl p-6 shadow-lg">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <Blazicon Svg="Lucide.Grid3x3" class="w-5 h-5 text-primary" />
+                        <h3 class="font-semibold text-lg">@T.Translate("ghSettings.shelf.title")</h3>
+                    </div>
+
+                    <div class="space-y-4">
+                        <!-- Regal Werkstückbearbeitung aktivieren -->
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-sm font-medium text-gray-700">@T.Translate("ghSettings.shelf.enable")</span>
+                                <p class="text-xs text-gray-500 mt-1">@T.Translate("ghSettings.shelf.enableDescription")</p>
+                            </div>
+                            <button
+                                class="w-12 h-6 rounded-full transition-colors duration-200 @(shelfEditingEnabled ? "bg-primary" : "bg-gray-300")"
+                                @onclick="ToggleShelfEditing">
+                                <div class="w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-200 @(shelfEditingEnabled ? "translate-x-6" : "translate-x-0.5")"></div>
+                            </button>
+                        </div>
+
+                        <!-- Regal Werkstückbearbeitung Offline (nur wenn aktiviert) -->
+                        @if (shelfEditingEnabled)
+                        {
+                            <div class="flex items-center justify-between pt-2 border-t border-gray-200">
+                                <div>
+                                    <span class="text-sm font-medium text-gray-700">@T.Translate("ghSettings.shelf.offline")</span>
+                                    <p class="text-xs text-gray-500 mt-1">@T.Translate("ghSettings.shelf.offlineDescription")</p>
+                                </div>
+                                <button
+                                    class="w-12 h-6 rounded-full transition-colors duration-200 @(shelfEditingOffline ? "bg-orange-500" : "bg-gray-300")"
+                                    @onclick="ToggleShelfOffline">
+                                    <div class="w-5 h-5 bg-white rounded-full shadow transform transition-transform duration-200 @(shelfEditingOffline ? "translate-x-6" : "translate-x-0.5")"></div>
+                                </button>
+                            </div>
+                        }
+
+                        <!-- Status-Anzeige -->
+                        <div class="mt-4 p-3 rounded-lg @GetStatusBackgroundClass()">
+                            <div class="flex items-center space-x-2">
+                                @if (!shelfEditingEnabled)
+                                {
+                                    <Blazicon Svg="Lucide.CircleOff" class="w-4 h-4 text-gray-500" />
+                                }
+                                else if (shelfEditingOffline)
+                                {
+                                    <Blazicon Svg="Lucide.WifiOff" class="w-4 h-4 text-orange-500" />
+                                }
+                                else
+                                {
+                                    <Blazicon Svg="Lucide.CircleCheck" class="w-4 h-4 text-green-500" />
+                                }
+                                <span class="text-sm font-medium @GetStatusTextClass()">@GetStatusText()</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+
+@code {
+    private bool jobListEnabled;
+    private bool shelfEditingEnabled;
+    private bool shelfEditingOffline;
+
+    protected override void OnInitialized()
+    {
+        jobListEnabled = GhSettings.IsJobListEnabled;
+        shelfEditingEnabled = GhSettings.IsShelfWorkpieceEditingEnabled;
+        shelfEditingOffline = GhSettings.IsShelfWorkpieceEditingOffline;
+
+        T.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ToggleJobList()
+    {
+        jobListEnabled = !jobListEnabled;
+        await GhSettings.SetJobListEnabledAsync(jobListEnabled);
+        await ActionLog.LogActionAsync(UserActions.SettingsChanged,
+            $"GH: Jobliste {(jobListEnabled ? "aktiviert" : "deaktiviert")}");
+    }
+
+    private async Task ToggleShelfEditing()
+    {
+        shelfEditingEnabled = !shelfEditingEnabled;
+        await GhSettings.SetShelfWorkpieceEditingEnabledAsync(shelfEditingEnabled);
+        await ActionLog.LogActionAsync(UserActions.SettingsChanged,
+            $"GH: Regal Werkstückbearbeitung {(shelfEditingEnabled ? "aktiviert" : "deaktiviert")}");
+    }
+
+    private async Task ToggleShelfOffline()
+    {
+        shelfEditingOffline = !shelfEditingOffline;
+        await GhSettings.SetShelfWorkpieceEditingOfflineAsync(shelfEditingOffline);
+        await ActionLog.LogActionAsync(UserActions.SettingsChanged,
+            $"GH: Regal Werkstückbearbeitung Offline {(shelfEditingOffline ? "aktiviert" : "deaktiviert")}");
+    }
+
+    private string GetStatusBackgroundClass()
+    {
+        if (!shelfEditingEnabled)
+            return "bg-gray-100";
+        if (shelfEditingOffline)
+            return "bg-orange-100";
+        return "bg-green-100";
+    }
+
+    private string GetStatusTextClass()
+    {
+        if (!shelfEditingEnabled)
+            return "text-gray-600";
+        if (shelfEditingOffline)
+            return "text-orange-600";
+        return "text-green-600";
+    }
+
+    private string GetStatusText()
+    {
+        if (!shelfEditingEnabled)
+            return T.Translate("ghSettings.shelf.statusDisabled");
+        if (shelfEditingOffline)
+            return T.Translate("ghSettings.shelf.statusOffline");
+        return T.Translate("ghSettings.shelf.statusOnline");
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/settings");
+    }
+
+    public void Dispose()
+    {
+        T.LanguageChanged -= OnLanguageChanged;
+    }
+}

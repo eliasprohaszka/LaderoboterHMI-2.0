@@ -21,7 +21,8 @@
       "Skill(frontend-design:*)",
       "Bash(grep:*)",
       "Bash(findstr:*)",
-      "Bash(dotnet restore:*)"
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet list:*)"
     ]
   }
 }

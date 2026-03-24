@@ -9,6 +9,7 @@
 @inject ISettingsService Settings
 @inject ITranslationService T
 @inject IUserActionLogService ActionLog
+@inject IGhSettingsService GhSettings
 @implements IDisposable
 
 <div class="main-page-container">
@@ -894,8 +895,28 @@
         var workpiece = ShelfWorkpieces.FirstOrDefault(w => w.Position == change.Position);
         if (workpiece == null) return;
 
+        // Wenn Werkstückbearbeitung deaktiviert ist, keine Änderung erlauben
+        if (!GhSettings.IsShelfWorkpieceEditingEnabled)
+        {
+            return;
+        }
+
         var oldState = workpiece.State;
 
+        // Offline-Modus: Änderungen nur lokal speichern, nicht an Roboter senden
+        if (GhSettings.IsShelfWorkpieceEditingOffline)
+        {
+            workpiece.State = change.NewState;
+
+            // Log shelf workpiece state change (offline)
+            await ActionLog.LogActionAsync(UserActions.ShelfWorkpieceStateChanged,
+                $"Regal Position {change.Position}: {oldState} → {change.NewState} (Offline)");
+
+            StateHasChanged();
+            return;
+        }
+
+        // Online-Modus: Änderungen an Roboter senden
         // Calculate register address
         // Shelf registers: R[66-93] when program running, R[166-193] when not
         bool programRunning = RobotService.Status.IsRunning;

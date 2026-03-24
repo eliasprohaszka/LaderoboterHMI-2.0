@@ -112,4 +112,10 @@ public class AuthorizationService : IAuthorizationService
         // Admin, GH Admin
         return IsAdmin();
     }
+
+    public bool CanAccessGhSettings()
+    {
+        // Nur GH Admin
+        return IsGHAdmin();
+    }
 }

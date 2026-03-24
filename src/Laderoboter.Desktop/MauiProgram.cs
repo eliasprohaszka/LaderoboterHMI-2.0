@@ -64,6 +64,7 @@ public static class MauiProgram
             {
                 await app.Services.InitializeDatabaseAsync();
                 await app.Services.InitializeTranslationsAsync();
+                await app.Services.InitializeGhSettingsAsync();
             }).GetAwaiter().GetResult();
 
             // Initialisiere Service-Verbindungen (löst zirkuläre Abhängigkeiten)

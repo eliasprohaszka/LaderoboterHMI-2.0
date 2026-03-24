@@ -63,6 +63,11 @@ public interface IAuthorizationService
     bool CanAccessTranslations();
 
     /// <summary>
+    /// Prüft, ob der aktuelle Benutzer auf GH-Einstellungen zugreifen darf (nur GH Admin)
+    /// </summary>
+    bool CanAccessGhSettings();
+
+    /// <summary>
     /// Gibt die aktuelle Benutzerrolle zurück
     /// </summary>
     UserRole? CurrentUserRole { get; }
