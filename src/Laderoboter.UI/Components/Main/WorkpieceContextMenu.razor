@@ -7,76 +7,135 @@
 @inject IUserActionLogService ActionLog
 @inject IJobService JobService
 @inject IGhSettingsService GhSettings
+@inject IWorkpieceProgramNumberService ProgramNumberService
 
 @if (IsVisible)
 {
     <div class="menu-overlay" @onclick="Close" @onclick:stopPropagation="true">
         <div class="menu" @onclick:stopPropagation="true">
-            <!-- Header -->
-            <div class="menu-header">
-                <div class="menu-title">@WorkpieceId</div>
-                <div class="menu-subtitle">@T.Translate("workpiece.currentStatus"): @CurrentStatusText</div>
-            </div>
+            @if (!ShowProgramNumberInput)
+            {
+                <!-- Header -->
+                <div class="menu-header">
+                    <div class="menu-title">@WorkpieceId</div>
+                    <div class="menu-subtitle">@T.Translate("workpiece.currentStatus"): @CurrentStatusText</div>
+                </div>
 
-            <!-- Actions -->
-            <div class="menu-actions">
-                <!-- Add to Job List (only visible if Job List is enabled) -->
-                @if (GhSettings.IsJobListEnabled)
-                {
-                    <button class="action-button @(IsInJobList ? "disabled" : "")"
-                            @onclick="AddToJobList"
-                            disabled="@IsInJobList">
-                        <div class="action-icon joblist"></div>
-                        <div class="action-text">
-                            <div class="title">@T.Translate("jobList.addToList")</div>
-                            <div class="description">
-                                @if (IsInJobList)
+                <!-- Actions -->
+                <div class="menu-actions">
+                    <!-- Add to Job List (only visible if Job List is enabled) -->
+                    @if (GhSettings.IsJobListEnabled)
+                    {
+                        <button class="action-button @(IsInJobList ? "disabled" : "")"
+                                @onclick="AddToJobList"
+                                disabled="@IsInJobList">
+                            <div class="action-icon joblist"></div>
+                            <div class="action-text">
+                                <div class="title">@T.Translate("jobList.addToList")</div>
+                                <div class="description">
+                                    @if (IsInJobList)
+                                    {
+                                        @T.Translate("jobList.alreadyInList")
+                                    }
+                                    else
+                                    {
+                                        @T.Translate("jobList.addToListDescription")
+                                    }
+                                </div>
+                            </div>
+                        </button>
+                    }
+
+                    <!-- Program Number (only visible if Job List is enabled) -->
+                    @if (GhSettings.IsJobListEnabled)
+                    {
+                        <button class="action-button" @onclick="OpenProgramNumberInput">
+                            <div class="action-icon program-number"></div>
+                            <div class="action-text">
+                                @if (CurrentProgramNumber.HasValue)
                                 {
-                                    @T.Translate("jobList.alreadyInList")
+                                    <div class="title">@T.Translate("workpieceMenu.changeProgramNumber")</div>
+                                    <div class="description">@T.Translate("workpieceMenu.changeProgramNumberDescription", CurrentProgramNumber.Value.ToString())</div>
                                 }
                                 else
                                 {
-                                    @T.Translate("jobList.addToListDescription")
+                                    <div class="title">@T.Translate("workpieceMenu.setProgramNumber")</div>
+                                    <div class="description">@T.Translate("workpieceMenu.setProgramNumberDescription")</div>
                                 }
                             </div>
+                        </button>
+                    }
+
+                    <!-- Locked -->
+                    <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Locked)">
+                        <div class="action-icon locked"></div>
+                        <div class="action-text">
+                            <div class="title">@T.Translate("workpieceMenu.lock")</div>
+                            <div class="description">@T.Translate("workpieceMenu.lockDescription")</div>
                         </div>
                     </button>
-                }
 
-                <!-- Locked -->
-                <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Locked)">
-                    <div class="action-icon locked"></div>
-                    <div class="action-text">
-                        <div class="title">@T.Translate("workpieceMenu.lock")</div>
-                        <div class="description">@T.Translate("workpieceMenu.lockDescription")</div>
+                    <!-- Unprocessed (Ready) -->
+                    <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Unprocessed)">
+                        <div class="action-icon unprocessed"></div>
+                        <div class="action-text">
+                            <div class="title">@T.Translate("workpieceMenu.reset")</div>
+                            <div class="description">@T.Translate("workpieceMenu.resetDescription")</div>
+                        </div>
+                    </button>
+
+                    <!-- Processed (Completed) -->
+                    <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Processed)">
+                        <div class="action-icon processed"></div>
+                        <div class="action-text">
+                            <div class="title">@T.Translate("workpieceMenu.complete")</div>
+                            <div class="description">@T.Translate("workpieceMenu.completeDescription")</div>
+                        </div>
+                    </button>
+                </div>
+
+                <!-- Footer -->
+                <div class="menu-footer">
+                    <button class="cancel-button" @onclick="Close">
+                        @T.Translate("common.cancel")
+                    </button>
+                </div>
+            }
+            else
+            {
+                <!-- Program Number Input View -->
+                <div class="menu-header">
+                    <div class="menu-title">@T.Translate("workpieceMenu.programNumberDialogTitle")</div>
+                    <div class="menu-subtitle">@WorkpieceId</div>
+                </div>
+
+                <div class="program-number-input-section">
+                    <input type="number"
+                           class="program-number-input"
+                           @bind="ProgramNumberInput"
+                           @bind:event="oninput"
+                           placeholder="@T.Translate("workpieceMenu.programNumberPlaceholder")"
+                           min="0"
+                           max="99999" />
+                </div>
+
+                <div class="menu-footer program-number-footer">
+                    @if (CurrentProgramNumber.HasValue)
+                    {
+                        <button class="remove-button" @onclick="RemoveProgramNumber">
+                            @T.Translate("workpieceMenu.removeProgramNumber")
+                        </button>
+                    }
+                    <div class="footer-buttons">
+                        <button class="cancel-button" @onclick="CloseProgramNumberInput">
+                            @T.Translate("common.cancel")
+                        </button>
+                        <button class="save-button" @onclick="SaveProgramNumber" disabled="@(!IsValidProgramNumber)">
+                            @T.Translate("common.save")
+                        </button>
                     </div>
-                </button>
-
-                <!-- Unprocessed (Ready) -->
-                <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Unprocessed)">
-                    <div class="action-icon unprocessed"></div>
-                    <div class="action-text">
-                        <div class="title">@T.Translate("workpieceMenu.reset")</div>
-                        <div class="description">@T.Translate("workpieceMenu.resetDescription")</div>
-                    </div>
-                </button>
-
-                <!-- Processed (Completed) -->
-                <button class="action-button" @onclick="() => SetStatus(WorkpieceState.Processed)">
-                    <div class="action-icon processed"></div>
-                    <div class="action-text">
-                        <div class="title">@T.Translate("workpieceMenu.complete")</div>
-                        <div class="description">@T.Translate("workpieceMenu.completeDescription")</div>
-                    </div>
-                </button>
-            </div>
-
-            <!-- Footer -->
-            <div class="menu-footer">
-                <button class="cancel-button" @onclick="Close">
-                    @T.Translate("common.cancel")
-                </button>
-            </div>
+                </div>
+            }
         </div>
     </div>
 }
@@ -86,8 +145,14 @@
     [Parameter] public WorkpieceStatus? Workpiece { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<WorkpieceStatus> OnStatusChanged { get; set; }
+    [Parameter] public EventCallback OnProgramNumberChanged { get; set; }
 
     private bool IsInJobList = false;
+    private int? CurrentProgramNumber = null;
+    private bool ShowProgramNumberInput = false;
+    private string ProgramNumberInput = "";
+
+    private bool IsValidProgramNumber => int.TryParse(ProgramNumberInput, out var num) && num >= 0 && num <= 99999;
 
     private int PaletteNumber => Workpiece != null
         ? (Workpiece.Position <= 8 ? 1 : 2)
@@ -114,10 +179,57 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        if (IsVisible && Workpiece != null && GhSettings.IsJobListEnabled)
+        if (IsVisible && Workpiece != null)
         {
-            IsInJobList = await JobService.IsWorkpieceInJobListAsync(PaletteNumber, PositionOnPalette);
+            if (GhSettings.IsJobListEnabled)
+            {
+                IsInJobList = await JobService.IsWorkpieceInJobListAsync(PaletteNumber, PositionOnPalette);
+            }
+
+            CurrentProgramNumber = await ProgramNumberService.GetProgramNumberAsync(PaletteNumber, PositionOnPalette);
+            ShowProgramNumberInput = false;
+            ProgramNumberInput = CurrentProgramNumber?.ToString() ?? "";
         }
+    }
+
+    private void OpenProgramNumberInput()
+    {
+        ProgramNumberInput = CurrentProgramNumber?.ToString() ?? "";
+        ShowProgramNumberInput = true;
+    }
+
+    private void CloseProgramNumberInput()
+    {
+        ShowProgramNumberInput = false;
+    }
+
+    private async Task SaveProgramNumber()
+    {
+        if (!IsValidProgramNumber || Workpiece == null) return;
+
+        var number = int.Parse(ProgramNumberInput);
+        await ProgramNumberService.SetProgramNumberAsync(PaletteNumber, PositionOnPalette, number);
+        CurrentProgramNumber = number;
+
+        await ActionLog.LogActionAsync(UserActions.WorkpieceStateChanged,
+            $"{WorkpieceId}: Programmnummer auf {number} gesetzt");
+
+        await OnProgramNumberChanged.InvokeAsync();
+        await Close();
+    }
+
+    private async Task RemoveProgramNumber()
+    {
+        if (Workpiece == null) return;
+
+        await ProgramNumberService.RemoveProgramNumberAsync(PaletteNumber, PositionOnPalette);
+
+        await ActionLog.LogActionAsync(UserActions.WorkpieceStateChanged,
+            $"{WorkpieceId}: Programmnummer entfernt");
+
+        CurrentProgramNumber = null;
+        await OnProgramNumberChanged.InvokeAsync();
+        await Close();
     }
 
     private async Task AddToJobList()
@@ -128,7 +240,6 @@
 
         if (job != null)
         {
-            // Log action
             await ActionLog.LogActionAsync(UserActions.JobAdded,
                 $"{WorkpieceId} zur Jobliste hinzugefügt (Sequenz: {job.SequenceNumber})");
 
@@ -144,21 +255,13 @@
 
         var oldState = Workpiece.State;
 
-        // Workpiece.Position ist 1-16 (1-8 = Palette 1, 9-16 = Palette 2)
-        // WriteWorkpieceRegisterWithHandshakeAsync kümmert sich um:
-        // - Register-Adresse (R150-R165)
-        // - Handshake-Protokoll (R149/R148/R48) wenn MAIN läuft
-        // - Direktes Schreiben + R148=1 wenn MAIN nicht läuft
-
         var success = await RobotService.WriteWorkpieceRegisterWithHandshakeAsync(Workpiece.Position, (int)newState);
 
         if (success)
         {
-            // Update local state
             Workpiece.State = newState;
             await OnStatusChanged.InvokeAsync(Workpiece);
 
-            // Log action
             await ActionLog.LogActionAsync(UserActions.WorkpieceStateChanged,
                 $"{WorkpieceId}: {oldState} → {newState}");
         }
@@ -168,6 +271,7 @@
 
     private async Task Close()
     {
+        ShowProgramNumberInput = false;
         await OnClose.InvokeAsync();
     }
 }

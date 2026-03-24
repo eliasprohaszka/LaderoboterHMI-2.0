@@ -1,5 +1,9 @@
 @using Laderoboter.Core.Models
+@using Laderoboter.Core.Interfaces
 @inject ITranslationService T
+@inject IWorkpieceProgramNumberService ProgramNumberService
+@inject IGhSettingsService GhSettings
+@implements IDisposable
 
 @{
     // Status-based CSS class for styling
@@ -42,6 +46,14 @@
         <!-- Position ID - Large and clear -->
         <div class="workpiece-id">@workpieceId</div>
 
+        <!-- Program Number (only if Job List enabled and number exists) -->
+        @if (GhSettings.IsJobListEnabled && _programNumber.HasValue)
+        {
+            <div class="workpiece-program-number">
+                @T.Translate("workpiece.programNumber"): @_programNumber.Value
+            </div>
+        }
+
         <!-- Status indicator with icon -->
         <div class="workpiece-status">
             @switch (Workpiece.State)
@@ -81,11 +93,58 @@
     [Parameter] public int PaletteId { get; set; } = 1;
     [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
 
+    private int? _programNumber;
+    private int _lastPaletteId;
+    private int _lastPosition;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ProgramNumberService.ProgramNumbersChanged += OnProgramNumbersChanged;
+        await LoadProgramNumber();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var position = ((Workpiece.Position - 1) % 8) + 1;
+        if (_lastPaletteId != PaletteId || _lastPosition != position)
+        {
+            _lastPaletteId = PaletteId;
+            _lastPosition = position;
+            await LoadProgramNumber();
+        }
+    }
+
+    private async Task LoadProgramNumber()
+    {
+        if (!GhSettings.IsJobListEnabled)
+        {
+            _programNumber = null;
+            return;
+        }
+
+        var position = ((Workpiece.Position - 1) % 8) + 1;
+        _programNumber = await ProgramNumberService.GetProgramNumberAsync(PaletteId, position);
+    }
+
+    private async void OnProgramNumbersChanged(object? sender, EventArgs e)
+    {
+        await InvokeAsync(async () =>
+        {
+            await LoadProgramNumber();
+            StateHasChanged();
+        });
+    }
+
     private async Task OnClick()
     {
         if (OnWorkpieceClick.HasDelegate)
         {
             await OnWorkpieceClick.InvokeAsync(Workpiece);
         }
+    }
+
+    public void Dispose()
+    {
+        ProgramNumberService.ProgramNumbersChanged -= OnProgramNumbersChanged;
     }
 }

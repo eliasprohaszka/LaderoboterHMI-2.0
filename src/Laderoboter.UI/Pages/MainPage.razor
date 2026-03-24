@@ -122,7 +122,8 @@
 <WorkpieceContextMenu IsVisible="@showWorkpieceContextMenu"
                       Workpiece="@selectedWorkpiece"
                       OnClose="CloseContextMenu"
-                      OnStatusChanged="OnWorkpieceStatusChanged" />
+                      OnStatusChanged="OnWorkpieceStatusChanged"
+                      OnProgramNumberChanged="OnProgramNumberChanged" />
 
 @* Change Mode Dialoge *@
 <ChangeModeConfirmDialog IsVisible="@showChangeModeConfirmDialog"
@@ -899,6 +900,12 @@
     private void OnWorkpieceStatusChanged(WorkpieceStatus workpiece)
     {
         // Trigger re-render after status change
+        StateHasChanged();
+    }
+
+    private void OnProgramNumberChanged()
+    {
+        // Trigger re-render after program number change
         StateHasChanged();
     }
 

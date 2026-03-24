@@ -40,6 +40,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IUserActionLogService, UserActionLogService>();
         services.AddSingleton<IGhSettingsService, GhSettingsService>();
         services.AddSingleton<IJobService, JobService>();
+        services.AddSingleton<IWorkpieceProgramNumberService, WorkpieceProgramNumberService>();
 
         return services;
     }

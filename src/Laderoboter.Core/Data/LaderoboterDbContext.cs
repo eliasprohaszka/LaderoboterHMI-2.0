@@ -16,6 +16,7 @@ public class LaderoboterDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<UserActionLog> UserActionLogs => Set<UserActionLog>();
     public DbSet<Job> Jobs => Set<Job>();
+    public DbSet<WorkpieceProgramNumber> WorkpieceProgramNumbers => Set<WorkpieceProgramNumber>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -95,6 +96,15 @@ public class LaderoboterDbContext : DbContext
             entity.Property(e => e.PaletteNumber).IsRequired();
             entity.Property(e => e.Position).IsRequired();
             entity.Property(e => e.SequenceNumber).IsRequired();
+        });
+
+        modelBuilder.Entity<WorkpieceProgramNumber>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => new { e.PaletteNumber, e.Position }).IsUnique();
+            entity.Property(e => e.PaletteNumber).IsRequired();
+            entity.Property(e => e.Position).IsRequired();
+            entity.Property(e => e.ProgramNumber).IsRequired();
         });
 
         // Settings and Translations are seeded at runtime via SettingsSeeder.SeedAsync() and TranslationSeeder.SeedAsync()

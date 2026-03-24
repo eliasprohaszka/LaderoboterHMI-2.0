@@ -160,6 +160,16 @@ public static class TranslationSeeder
         Add("workpieceMenu.resetDescription", "Als unbearbeitet markieren", "Mark as unprocessed", "workpieceMenu");
         Add("workpieceMenu.complete", "Fertig", "Complete", "workpieceMenu");
         Add("workpieceMenu.completeDescription", "Als bearbeitet markieren", "Mark as processed", "workpieceMenu");
+        Add("workpieceMenu.setProgramNumber", "Programmnummer festlegen", "Set Program Number", "workpieceMenu");
+        Add("workpieceMenu.setProgramNumberDescription", "CNC-Programmnummer für dieses Werkstück", "CNC program number for this workpiece", "workpieceMenu");
+        Add("workpieceMenu.changeProgramNumber", "Programmnummer ändern", "Change Program Number", "workpieceMenu");
+        Add("workpieceMenu.changeProgramNumberDescription", "Aktuelle Programmnummer: {0}", "Current program number: {0}", "workpieceMenu");
+        Add("workpieceMenu.programNumberDialogTitle", "Programmnummer", "Program Number", "workpieceMenu");
+        Add("workpieceMenu.programNumberPlaceholder", "z.B. 1234", "e.g. 1234", "workpieceMenu");
+        Add("workpieceMenu.removeProgramNumber", "Programmnummer entfernen", "Remove Program Number", "workpieceMenu");
+
+        // === Workpiece Program Number Display ===
+        Add("workpiece.programNumber", "Prog.Nr", "Prog.No", "workpiece");
 
         // === Change Mode ===
         Add("changeMode.activate", "Wechselmodus aktivieren", "Activate Change Mode", "changeMode");

@@ -5,6 +5,7 @@
 @inject IJobService JobService
 @inject ITranslationService T
 @inject IJSRuntime JS
+@inject IWorkpieceProgramNumberService ProgramNumberService
 @implements IAsyncDisposable
 
 <div class="job-sidebar glass-card @(IsCollapsed ? "collapsed" : "expanded")"
@@ -70,9 +71,9 @@
                                 <!-- Workpiece Info -->
                                 <div class="job-info">
                                     <span class="workpiece-id">@job.WorkpieceId</span>
-                                    @if (job.ProgramNumber.HasValue)
+                                    @if (GetProgramNumber(job.PaletteNumber, job.Position) is int progNum)
                                     {
-                                        <span class="program-number">Prog: @job.ProgramNumber</span>
+                                        <span class="program-number">@T.Translate("workpiece.programNumber"): @progNum</span>
                                     }
                                 </div>
 
@@ -130,13 +131,36 @@
     private DotNetObjectReference<JobListSidebar>? _dotNetRef;
     private bool _sortableInitialized = false;
     private bool _needsFooterUpdate = false;
+    private Dictionary<(int PaletteNumber, int Position), int> _programNumbers = new();
 
     protected override async Task OnInitializedAsync()
     {
         JobService.JobListChanged += OnJobListChanged;
         T.LanguageChanged += OnLanguageChanged;
+        ProgramNumberService.ProgramNumbersChanged += OnProgramNumbersChanged;
         _dotNetRef = DotNetObjectReference.Create(this);
         await LoadJobs();
+    }
+
+    private int? GetProgramNumber(int paletteNumber, int position)
+    {
+        return _programNumbers.TryGetValue((paletteNumber, position), out var num) ? num : null;
+    }
+
+    private async void OnProgramNumbersChanged(object? sender, EventArgs e)
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                _programNumbers = await ProgramNumberService.GetAllProgramNumbersAsync();
+                StateHasChanged();
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in OnProgramNumbersChanged: {ex.Message}");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -277,6 +301,7 @@
             SequenceNumber = j.SequenceNumber,
             ProgramNumber = j.ProgramNumber
         }).ToList();
+        _programNumbers = await ProgramNumberService.GetAllProgramNumbersAsync();
         HasUnsavedChanges = false;
         _sortableInitialized = false;
     }
@@ -391,6 +416,7 @@
     {
         JobService.JobListChanged -= OnJobListChanged;
         T.LanguageChanged -= OnLanguageChanged;
+        ProgramNumberService.ProgramNumbersChanged -= OnProgramNumbersChanged;
         await DestroySortable();
         _dotNetRef?.Dispose();
     }
