@@ -97,6 +97,18 @@
     border-color: #3b82f6;
 }
 
+/* Hide browser's native password reveal button */
+.keyboard-preview-input::-ms-reveal,
+.keyboard-preview-input::-ms-clear {
+    display: none;
+}
+
+.keyboard-preview-input::-webkit-credentials-auto-fill-button,
+.keyboard-preview-input::-webkit-textfield-decoration-container {
+    visibility: hidden;
+    pointer-events: none;
+}
+
 /* Simple keyboard theme */
 .simple-keyboard.virtual-keyboard-theme {
     background: linear-gradient(180deg, #c8c8c8 0%, #b0b0b0 100%);

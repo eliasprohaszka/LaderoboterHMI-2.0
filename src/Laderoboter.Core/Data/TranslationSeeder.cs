@@ -405,9 +405,9 @@ public static class TranslationSeeder
         Add("login.title", "Anmeldung", "Login", "login");
         Add("login.description", "Melden Sie sich an, um fortzufahren", "Sign in to continue", "login");
         Add("login.personalNumber", "Personalnummer", "Personal Number", "login");
-        Add("login.personalNumberPlaceholder", "z.B. 001", "e.g. 001", "login");
+        Add("login.personalNumberPlaceholder", "", "", "login");
         Add("login.password", "Passwort", "Password", "login");
-        Add("login.passwordPlaceholder", "Passwort eingeben", "Enter password", "login");
+        Add("login.passwordPlaceholder", "", "", "login");
         Add("login.login", "Anmelden", "Login", "login");
         Add("login.loggingIn", "Anmeldung...", "Logging in...", "login");
         Add("login.or", "oder", "or", "login");

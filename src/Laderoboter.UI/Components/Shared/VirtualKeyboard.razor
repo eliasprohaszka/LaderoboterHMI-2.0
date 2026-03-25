@@ -7,7 +7,7 @@
     <!-- Full screen backdrop with blur -->
     <div class="keyboard-backdrop" @onclick="Cancel"></div>
 
-    <div class="keyboard-container" @onmousedown:stopPropagation @onmousedown:preventDefault>
+    <div class="keyboard-container" @onmousedown:stopPropagation>
         <!-- Blur background layer -->
         <div class="keyboard-blur-layer"></div>
 
@@ -54,15 +54,35 @@
                 {
                     <!-- Text/Email/Password keyboard: horizontal layout -->
                     <div class="flex items-center gap-2 w-full">
-                        <input type="text"
-                               @ref="_previewInputRef"
-                               value="@(_inputType == InputType.Password ? _displayValue : _inputValue)"
-                               @oninput="HandlePreviewInput"
-                               @onkeydown="HandleInputKeydown"
-                               class="keyboard-preview-input flex-1"
-                               placeholder="@_placeholder"
-                               readonly="@(_inputType == InputType.Password)"
-                               data-no-keyboard />
+                        <div class="relative flex-1">
+                            <input type="@(_inputType == InputType.Password && !_showPassword ? "password" : "text")"
+                                   @ref="_previewInputRef"
+                                   value="@_inputValue"
+                                   @oninput="HandlePreviewInput"
+                                   @onkeydown="HandleInputKeydown"
+                                   class="keyboard-preview-input w-full @(_inputType == InputType.Password ? "pr-12" : "")"
+                                   placeholder="@_placeholder"
+                                   data-no-keyboard />
+                            @if (_inputType == InputType.Password)
+                            {
+                                <button type="button"
+                                        class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-200 transition-colors"
+                                        @onclick="TogglePasswordVisibility"
+                                        @onmousedown:preventDefault
+                                        title="@(_showPassword ? "Passwort verbergen" : "Passwort anzeigen")">
+                                    @if (_showPassword)
+                                    {
+                                        <!-- Eye off icon -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>
+                                    }
+                                    else
+                                    {
+                                        <!-- Eye icon -->
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>
+                                    }
+                                </button>
+                            }
+                        </div>
                         @if (_inputType != InputType.Password)
                         {
                             <button type="button" class="keyboard-action-button" @onclick="CopyToClipboard" title="In Zwischenablage kopieren">
@@ -112,11 +132,9 @@
     private string _placeholder = "";
     private InputType _inputType = InputType.Text;
     private bool _shiftActive;
+    private bool _showPassword;
     private ElementReference _previewInputRef;
     private string? _targetInputId;
-    private string _displayValue = "";
-    private System.Timers.Timer? _maskTimer;
-    private int _lastRevealedIndex = -1;
 
     public enum InputType { Text, Number, Email, Password }
 
@@ -203,10 +221,28 @@
         }
     };
 
+    private bool _shouldFocus;
+
     protected override void OnInitialized()
     {
         KeyboardService.KeyboardRequested += OnKeyboardRequested;
         KeyboardService.KeyboardClosed += OnKeyboardClosed;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_shouldFocus && _isVisible)
+        {
+            _shouldFocus = false;
+            try
+            {
+                await _previewInputRef.FocusAsync();
+            }
+            catch
+            {
+                // Element might not be rendered yet
+            }
+        }
     }
 
     private void OnKeyboardRequested(object? sender, VirtualKeyboardEventArgs e)
@@ -223,10 +259,15 @@
             _ => InputType.Text
         };
         _shiftActive = false;
-        _lastRevealedIndex = -1;
-        UpdateDisplayValue();
+        _showPassword = false;
         _isVisible = true;
+        _shouldFocus = true;
         InvokeAsync(StateHasChanged);
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        _showPassword = !_showPassword;
     }
 
     private void OnKeyboardClosed(object? sender, EventArgs e)
@@ -237,8 +278,6 @@
 
     public void Dispose()
     {
-        _maskTimer?.Stop();
-        _maskTimer?.Dispose();
         KeyboardService.KeyboardRequested -= OnKeyboardRequested;
         KeyboardService.KeyboardClosed -= OnKeyboardClosed;
     }
@@ -292,7 +331,6 @@
                 if (_inputValue.Length > 0)
                 {
                     _inputValue = _inputValue[..^1];
-                    UpdateDisplayValue();
                 }
                 break;
             case "{enter}":
@@ -303,17 +341,9 @@
                 break;
             case "{space}":
                 _inputValue += " ";
-                if (_inputType == InputType.Password)
-                {
-                    RevealLastCharacter();
-                }
                 break;
             default:
                 _inputValue += key;
-                if (_inputType == InputType.Password)
-                {
-                    RevealLastCharacter();
-                }
                 if (_shiftActive && (_inputType == InputType.Text || _inputType == InputType.Password))
                 {
                     _shiftActive = false;
@@ -322,59 +352,17 @@
         }
     }
 
-    private void RevealLastCharacter()
-    {
-        _maskTimer?.Stop();
-        _maskTimer?.Dispose();
-
-        _lastRevealedIndex = _inputValue.Length - 1;
-        UpdateDisplayValue(revealLast: true);
-
-        _maskTimer = new System.Timers.Timer(500);
-        _maskTimer.Elapsed += (s, e) =>
-        {
-            _maskTimer?.Stop();
-            InvokeAsync(() =>
-            {
-                _lastRevealedIndex = -1;
-                UpdateDisplayValue();
-                StateHasChanged();
-            });
-        };
-        _maskTimer.AutoReset = false;
-        _maskTimer.Start();
-    }
-
-    private void UpdateDisplayValue(bool revealLast = false)
-    {
-        if (_inputType != InputType.Password)
-        {
-            _displayValue = _inputValue;
-            return;
-        }
-
-        if (_inputValue.Length == 0)
-        {
-            _displayValue = "";
-            return;
-        }
-
-        if (revealLast && _inputValue.Length > 0)
-        {
-            _displayValue = new string('●', _inputValue.Length - 1) + _inputValue[^1];
-        }
-        else
-        {
-            _displayValue = new string('●', _inputValue.Length);
-        }
-    }
-
     private void HandlePreviewInput(ChangeEventArgs e)
     {
-        // Don't allow direct input for password fields (they're readonly)
-        if (_inputType == InputType.Password) return;
+        var newValue = e.Value?.ToString() ?? "";
 
-        _inputValue = e.Value?.ToString() ?? "";
+        // For number input, filter to only allow digits
+        if (_inputType == InputType.Number)
+        {
+            newValue = new string(newValue.Where(char.IsDigit).ToArray());
+        }
+
+        _inputValue = newValue;
     }
 
     private void HandleInputKeydown(KeyboardEventArgs e)
@@ -415,7 +403,6 @@
     private void ClearInput()
     {
         _inputValue = "";
-        _displayValue = "";
     }
 
     private async Task CopyToClipboard()
