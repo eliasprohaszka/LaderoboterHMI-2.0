@@ -34,14 +34,15 @@ public interface IRobotService : IDisposable
     Task<bool> WriteRegisterAsync(int address, int value);
 
     /// <summary>
-    /// Writes a workpiece register (R150-R165) with the handshake protocol.
+    /// Writes a workpiece register with the handshake protocol.
     /// When MAIN program is running: Uses R149/R148/R48 handshake to signal robot.
-    /// When MAIN program is NOT running: Writes directly to R150-R165 and sets R148=1.
+    /// When MAIN program is NOT running: Writes directly and sets R148=1.
     /// </summary>
-    /// <param name="workpiecePosition">Position 1-16 (1-8 = Palette 1, 9-16 = Palette 2)</param>
+    /// <param name="workpiecePosition">Position 1-16 for palettes, 1-28 for shelf</param>
     /// <param name="value">The workpiece state value</param>
+    /// <param name="isShelf">True if writing to shelf registers (R166-R193), false for palette registers (R150-R165)</param>
     /// <returns>True if write (and handshake if applicable) succeeded</returns>
-    Task<bool> WriteWorkpieceRegisterWithHandshakeAsync(int workpiecePosition, int value);
+    Task<bool> WriteWorkpieceRegisterWithHandshakeAsync(int workpiecePosition, int value, bool isShelf = false);
 
     // IO
     Task<bool?> ReadDigitalInputAsync(int address);

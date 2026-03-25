@@ -114,8 +114,9 @@
     // Shared Events
     [Parameter] public EventCallback<WorkpieceStatus> OnWorkpieceClick { get; set; }
     [Parameter] public EventCallback<(int Position, WorkpieceState NewState)> OnShelfWorkpieceStateChange { get; set; }
+    [Parameter] public EventCallback<bool> OnViewChanged { get; set; }
 
-    private void SetView(ViewMode mode)
+    private async Task SetView(ViewMode mode)
     {
         CurrentView = mode;
 
@@ -123,6 +124,9 @@
         RobotMonitor.CurrentView = mode == ViewMode.Palette
             ? MonitorView.Palette
             : MonitorView.Shelf;
+
+        // Informiere MainPage über die View-Änderung (isShelf = true wenn Shelf)
+        await OnViewChanged.InvokeAsync(mode == ViewMode.Shelf);
     }
 
     public enum ViewMode

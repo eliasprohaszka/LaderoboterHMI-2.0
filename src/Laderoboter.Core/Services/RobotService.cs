@@ -484,13 +484,26 @@ public class RobotService : IRobotService
     /// When MAIN program is running: Uses R149/R148/R48 handshake to signal robot.
     /// When MAIN program is NOT running: Writes directly to R150-R165 and sets R148=1.
     /// </summary>
-    public async Task<bool> WriteWorkpieceRegisterWithHandshakeAsync(int workpiecePosition, int value)
+    public async Task<bool> WriteWorkpieceRegisterWithHandshakeAsync(int workpiecePosition, int value, bool isShelf = false)
     {
         if (_robot == null || !IsConnected) return false;
-        if (workpiecePosition < 1 || workpiecePosition > 16) return false;
 
-        // Calculate register address: Position 1 -> R150, Position 16 -> R165
-        int registerAddress = PALETTE_IDLE_START + (workpiecePosition - 1);
+        // Validate position based on type
+        if (isShelf)
+        {
+            if (workpiecePosition < 1 || workpiecePosition > 28) return false;
+        }
+        else
+        {
+            if (workpiecePosition < 1 || workpiecePosition > 16) return false;
+        }
+
+        // Calculate register address:
+        // Palette: Position 1-16 -> R150-R165
+        // Shelf: Position 1-28 -> R166-R193
+        int registerAddress = isShelf
+            ? SHELF_IDLE_START + (workpiecePosition - 1)    // R166-R193
+            : PALETTE_IDLE_START + (workpiecePosition - 1); // R150-R165
 
         try
         {

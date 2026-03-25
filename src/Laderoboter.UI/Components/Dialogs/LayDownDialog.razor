@@ -33,7 +33,7 @@
                                         <div class="@GetWorkpieceClasses(workpiece)"
                                              @onclick="() => SelectWorkpiece(workpiece)">
                                             <div class="absolute inset-1 flex flex-col justify-center items-center text-white">
-                                                <div class="font-medium leading-none">@workpiece.Position</div>
+                                                <div class="font-medium leading-none">@(((workpiece.Position - 1) % 8) + 1)</div>
                                             </div>
                                         </div>
                                     }
@@ -52,7 +52,7 @@
                                         <div class="@GetWorkpieceClasses(workpiece)"
                                              @onclick="() => SelectWorkpiece(workpiece)">
                                             <div class="absolute inset-1 flex flex-col justify-center items-center text-white">
-                                                <div class="font-medium leading-none">@workpiece.Position</div>
+                                                <div class="font-medium leading-none">@(((workpiece.Position - 1) % 8) + 1)</div>
                                             </div>
                                         </div>
                                     }
@@ -91,17 +91,15 @@
     private WorkpieceStatus? SelectedWorkpiece { get; set; }
 
     private string ConfirmButtonText => SelectedWorkpiece != null
-        ? ConfirmTextWithWorkpiece.Replace("{id}", $"P{GetPaletteNumber()}-{SelectedWorkpiece.Position}")
+        ? ConfirmTextWithWorkpiece.Replace("{id}", $"P{GetPaletteNumber()}-{((SelectedWorkpiece.Position - 1) % 8) + 1}")
         : ConfirmTextGeneral;
 
     private int GetPaletteNumber()
     {
         if (SelectedWorkpiece == null) return 0;
-        // Palette 1 Positionen: 1-8, Palette 2 Positionen: 1-8
-        // Wir bestimmen anhand der RegisterAddress
-        if (Palette1?.Workpieces.Contains(SelectedWorkpiece) == true) return 1;
-        if (Palette2?.Workpieces.Contains(SelectedWorkpiece) == true) return 2;
-        return 0;
+        // Palette 1 Positionen: 1-8, Palette 2 Positionen: 9-16
+        // Position <= 8 = Palette 1, Position > 8 = Palette 2
+        return SelectedWorkpiece.Position <= 8 ? 1 : 2;
     }
 
     private void SelectWorkpiece(WorkpieceStatus workpiece)

@@ -108,7 +108,8 @@
                         OnPalette2ToggleMode="TogglePalette2Mode"
                         OnShelfToggleMode="ToggleShelfMode"
                         OnWorkpieceClick="OnWorkpieceClick"
-                        OnShelfWorkpieceStateChange="OnShelfWorkpieceStateChange" />
+                        OnShelfWorkpieceStateChange="OnShelfWorkpieceStateChange"
+                        OnViewChanged="OnViewChanged" />
                 </div>
 
                 <!-- Speed Override Sidebar (Right) -->
@@ -121,6 +122,7 @@
 @* Context Menu für Werkstück *@
 <WorkpieceContextMenu IsVisible="@showWorkpieceContextMenu"
                       Workpiece="@selectedWorkpiece"
+                      IsShelf="@isShelfView"
                       OnClose="CloseContextMenu"
                       OnStatusChanged="OnWorkpieceStatusChanged"
                       OnProgramNumberChanged="OnProgramNumberChanged" />
@@ -158,6 +160,7 @@
 
     private bool showWorkpieceContextMenu = false;
     private WorkpieceStatus? selectedWorkpiece;
+    private bool isShelfView = false;
 
     // Palette data
     private List<WorkpieceStatus> Palette1Workpieces = new();
@@ -255,7 +258,7 @@
 
         Palette2Workpieces = Enumerable.Range(1, 8).Select(i => new WorkpieceStatus
         {
-            Position = i,
+            Position = i + 8,  // Position 9-16 für Palette 2 (global)
             State = WorkpieceState.Unused,
             RegisterAddress = 58 + (i - 1),  // R[58-65] wenn Programm läuft, R[158-165] wenn nicht
             SequenceNumber = 0
@@ -766,7 +769,7 @@
         }
 
         // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
-        if (!RobotService.Status.IsRunning)
+        if (!RobotService.Status.IsMainProgramRunning)
         {
             await RobotService.WriteRegisterAsync(148, 1);
         }
@@ -816,7 +819,7 @@
         }
 
         // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
-        if (!RobotService.Status.IsRunning)
+        if (!RobotService.Status.IsMainProgramRunning)
         {
             await RobotService.WriteRegisterAsync(148, 1);
         }
@@ -848,24 +851,13 @@
     /// </summary>
     private async Task ResetAllPartsInShelf()
     {
-        // Setze alle Werkstücke auf Status 2 (Unprocessed)
+        // Setze alle Werkstücke auf Status 2 (Unprocessed) mit Handshake
         foreach (var workpiece in ShelfWorkpieces)
         {
-            // Schreibe in R166-193 Bereich (nicht R66-93)
-            var targetAddress = workpiece.RegisterAddress >= 66 && workpiece.RegisterAddress <= 93
-                ? workpiece.RegisterAddress + 100
-                : workpiece.RegisterAddress;
-
-            await RobotService.WriteRegisterAsync(targetAddress, (int)WorkpieceState.Unprocessed);
+            await RobotService.WriteWorkpieceRegisterWithHandshakeAsync(workpiece.Position, (int)WorkpieceState.Unprocessed, isShelf: true);
 
             // Aktualisiere lokalen State
             workpiece.State = WorkpieceState.Unprocessed;
-        }
-
-        // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
-        if (!RobotService.Status.IsRunning)
-        {
-            await RobotService.WriteRegisterAsync(148, 1);
         }
 
         // Log shelf reset
@@ -909,6 +901,11 @@
         StateHasChanged();
     }
 
+    private void OnViewChanged(bool isShelf)
+    {
+        isShelfView = isShelf;
+    }
+
     private async Task OnShelfWorkpieceStateChange((int Position, WorkpieceState NewState) change)
     {
         var workpiece = ShelfWorkpieces.FirstOrDefault(w => w.Position == change.Position);
@@ -935,16 +932,8 @@
             return;
         }
 
-        // Online-Modus: Änderungen an Roboter senden
-        // Calculate register address
-        // Shelf registers: R[66-93] when program running, R[166-193] when not
-        bool programRunning = RobotService.Status.IsRunning;
-        int registerAddress = programRunning
-            ? workpiece.RegisterAddress
-            : workpiece.RegisterAddress + 100;
-
-        // Write to robot register
-        var success = await RobotService.WriteRegisterAsync(registerAddress, (int)change.NewState);
+        // Online-Modus: Änderungen an Roboter senden mit Handshake-Protokoll
+        var success = await RobotService.WriteWorkpieceRegisterWithHandshakeAsync(change.Position, (int)change.NewState, isShelf: true);
 
         if (success)
         {
@@ -953,12 +942,6 @@
             // Log shelf workpiece state change
             await ActionLog.LogActionAsync(UserActions.ShelfWorkpieceStateChanged,
                 $"Regal Position {change.Position}: {oldState} → {change.NewState}");
-
-            // Signal new data available (R148 = 1) wenn Hauptprogramm nicht läuft
-            if (!RobotService.Status.IsRunning)
-            {
-                await RobotService.WriteRegisterAsync(148, 1);
-            }
 
             StateHasChanged();
         }

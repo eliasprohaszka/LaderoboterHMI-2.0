@@ -135,7 +135,7 @@
         }
 
         // Trigger handshake R148 wenn Programm nicht läuft
-        if (!RobotService.Status.IsRunning)
+        if (!RobotService.Status.IsMainProgramRunning)
         {
             await RobotService.WriteRegisterAsync(148, 1);
         }
@@ -159,7 +159,7 @@
         }
 
         // Trigger handshake R148 wenn Programm nicht läuft
-        if (!RobotService.Status.IsRunning)
+        if (!RobotService.Status.IsMainProgramRunning)
         {
             await RobotService.WriteRegisterAsync(148, 1);
         }

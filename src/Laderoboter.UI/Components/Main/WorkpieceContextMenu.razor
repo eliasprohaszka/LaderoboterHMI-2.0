@@ -143,6 +143,7 @@
 @code {
     [Parameter] public bool IsVisible { get; set; }
     [Parameter] public WorkpieceStatus? Workpiece { get; set; }
+    [Parameter] public bool IsShelf { get; set; } = false;
     [Parameter] public EventCallback OnClose { get; set; }
     [Parameter] public EventCallback<WorkpieceStatus> OnStatusChanged { get; set; }
     [Parameter] public EventCallback OnProgramNumberChanged { get; set; }
@@ -255,7 +256,7 @@
 
         var oldState = Workpiece.State;
 
-        var success = await RobotService.WriteWorkpieceRegisterWithHandshakeAsync(Workpiece.Position, (int)newState);
+        var success = await RobotService.WriteWorkpieceRegisterWithHandshakeAsync(Workpiece.Position, (int)newState, IsShelf);
 
         if (success)
         {
